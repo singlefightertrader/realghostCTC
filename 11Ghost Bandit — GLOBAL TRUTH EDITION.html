@@ -1,0 +1,1248 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ghost Bandit — GLOBAL TRUTH EDITION</title>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+:root{
+  --bg:#020617; --fg:#e5e7eb; --line:#334155;
+  --ok:#22c55e; --wait:#facc15; --stop:#ef4444;
+  --risk:#f59e0b; --note:#94a3b8;
+}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui}
+.wrap{max-width:1400px;margin:auto;padding:12px}
+.top{display:flex;gap:8px;flex-wrap:wrap}
+select,button{padding:8px 12px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-weight:800}
+#chart{height:420px;border:1px solid var(--line);border-radius:12px;margin-top:10px}
+.container{position:relative}
+.overlay{
+ position:absolute;top:10px;left:10px;
+ background:rgba(2,6,23,.92);border:1px solid var(--line);
+ border-radius:10px;padding:8px 12px;font-family:monospace;font-size:12px
+}
+.locked{
+ position:absolute;inset:0;background:rgba(0,0,0,.65);
+ display:none;align-items:center;justify-content:center;
+ font-size:32px;font-weight:900;color:var(--stop)
+}
+.statusBox{margin-top:12px;border-radius:14px;padding:16px;border:2px solid var(--line)}
+.green{border-color:var(--ok);color:var(--ok)}
+.yellow{border-color:var(--wait);color:var(--wait)}
+.red{border-color:var(--stop);color:var(--stop)}
+.risk{border-color:var(--risk);color:var(--risk)}
+.big{font-size:22px;font-weight:900;display:flex;align-items:center;gap:8px}
+.hint{opacity:.9;margin-top:6px}
+.warn{font-size:12px;color:var(--wait);opacity:.9;margin-top:6px}
+.note{font-size:11px;color:var(--note);margin-top:8px;font-style:italic}
+pre{background:#000;border-radius:12px;padding:10px;max-height:30vh;overflow:auto;font-family:monospace;font-size:12px;margin-top:10px}
+.hash{font-size:9px;color:#64748b;word-break:break-all;margin-top:4px}
+.truth-badge{
+  position:fixed;bottom:10px;right:10px;background:rgba(2,6,23,.9);
+  border:1px solid var(--line);border-radius:8px;padding:6px 10px;
+  font-size:10px;color:var(--note);z-index:1000;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<div class="top">
+  <select id="pair">
+    <option>BTCUSDT</option>
+    <option>ETHUSDT</option>
+  </select>
+  <select id="tf">
+    <option value="1m">M1</option>
+    <option value="5m" selected>M5</option>
+    <option value="15m">M15</option>
+  </select>
+  <button onclick="start()">START</button>
+  <button onclick="stop()">STOP</button>
+  <button onclick="exportLog()" style="background:#7c3aed">📥 LOG</button>
+</div>
+
+<div class="container">
+  <div id="chart"></div>
+  <div id="overlay" class="overlay"></div>
+  <div id="locked" class="locked">ENGINE LOCKED<br><small>Global State</small></div>
+</div>
+
+<div id="status" class="statusBox yellow">
+  <div id="big" class="big">⏳ TUNGGU</div>
+  <div id="hint" class="hint">Belum ada kondisi entry aman.</div>
+  <div class="warn">⚠️ ENGINE: Local session state. Buka di tab lain = state berbeda.</div>
+  <div id="riskNote" class="note"></div>
+</div>
+
+<pre id="log"></pre>
+
+</div>
+
+<div id="truthBadge" class="truth-badge">
+  <div>STATE: <span id="globalState">LOCAL</span></div>
+  <div>HASH: <span id="currentHash">-</span></div>
+</div>
+
+<script>
+// ================= GLOBAL TRUTH DECLARATION =================
+console.log(`%c⚠️  GHOST BANDIT - GLOBAL TRUTH NOTICE ⚠️
+Engine state is LOCAL per browser session.
+Opening in another tab = different state.
+This is NOT a consensus system.
+`, 'color: #f59e0b; font-weight: bold;');
+
+// ================= CRYPTOGRAPHIC HASH CHAIN =================
+class HashChain {
+    constructor() {
+        this.chain = [];
+        this.lastHash = this.hash('GENESIS-' + Date.now());
+    }
+    
+    hash(input) {
+        // Simple deterministic hash (for demo)
+        let hash = 0;
+        const str = JSON.stringify(input);
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(36).padStart(8, '0');
+    }
+    
+    add(event, stateData) {
+        const block = {
+            timestamp: Date.now(),
+            event,
+            state: {...stateData},
+            prevHash: this.lastHash
+        };
+        
+        block.hash = this.hash(JSON.stringify(block));
+        this.lastHash = block.hash;
+        this.chain.push(block);
+        
+        return block;
+    }
+    
+    verify() {
+        for (let i = 1; i < this.chain.length; i++) {
+            const current = this.chain[i];
+            const prev = this.chain[i-1];
+            
+            const recomputedHash = this.hash({
+                timestamp: current.timestamp,
+                event: current.event,
+                state: current.state,
+                prevHash: prev.hash
+            });
+            
+            if (recomputedHash !== current.hash || current.prevHash !== prev.hash) {
+                return {valid: false, index: i};
+            }
+        }
+        return {valid: true};
+    }
+    
+    export() {
+        return {
+            chain: this.chain,
+            lastHash: this.lastHash,
+            verification: this.verify()
+        };
+    }
+}
+
+const hashChain = new HashChain();
+
+// ================= RISK PSYCHOLOGY ENGINE =================
+class RiskPsychology {
+    constructor() {
+        this.contextHistory = [];
+        this.maxContext = 20;
+    }
+    
+    analyzeContext(candle, ghost, regime, state) {
+        const contexts = [];
+        
+        // 1. Market Context
+        if (!ghost) contexts.push('NO_ZONE');
+        if (candle && candle.close === candle.open) contexts.push('DOJI_UNCERTAINTY');
+        if (state === 'OBSERVE_ONLY') contexts.push('MARKET_FLAT');
+        if (state === 'LOCKED') contexts.push('ENGINE_LOCKED_DANGER');
+        
+        // 2. Zone Context
+        if (ghost) {
+            const zoneMiddle = (ghost.top + ghost.bottom) / 2;
+            const distanceFromMiddle = Math.abs(candle.close - zoneMiddle) / zoneMiddle;
+            if (distanceFromMiddle > 0.0008) contexts.push('ZONE_EDGE');
+        }
+        
+        // 3. Regime Context
+        const lastCandleColor = candle.close > candle.open ? 'BULL' : (candle.close < candle.open ? 'BEAR' : 'DOJI');
+        const isContradiction = (regime === 'BULL' && lastCandleColor === 'BEAR') || 
+                                (regime === 'BEAR' && lastCandleColor === 'BULL');
+
+        if (isContradiction) {
+            // FIX A: Hanya flag contradiction jika 2 candle berturut-turut (cek history sebelumnya)
+            const prevContext = this.contextHistory[this.contextHistory.length - 1];
+            if (prevContext && prevContext.contexts.includes('REGIME_CONTRADICTION')) {
+                contexts.push('REGIME_CONTRADICTION');
+            }
+        }
+        
+        // 4. Time Context
+        const now = new Date();
+        const hour = now.getUTCHours();
+        if (hour >= 22 || hour <= 4) contexts.push('LOW_LIQUIDITY_HOURS');
+        
+        this.contextHistory.push({
+            timestamp: Date.now(),
+            contexts: [...contexts],
+            state,
+            regime
+        });
+        
+        if (this.contextHistory.length > this.maxContext) {
+            this.contextHistory.shift();
+        }
+        
+        return contexts;
+    }
+    
+    getRiskMessage(contexts, entryValid) {
+        if (entryValid) {
+            // Ketika BOLEH, tapi ada risk contexts
+            if (contexts.includes('REGIME_CONTRADICTION')) {
+                return {
+                    level: 'HIGH',
+                    message: 'Boleh entry TAPI regime bertentangan dengan candle (2x). High risk.',
+                    icon: '⚠️'
+                };
+            }
+            if (contexts.includes('ZONE_EDGE')) {
+                return {
+                    level: 'MEDIUM',
+                    message: 'Boleh entry TAPI di ujung zona. Medium risk.',
+                    icon: '⚠️'
+                };
+            }
+            if (contexts.length > 0) {
+                return {
+                    level: 'LOW',
+                    message: 'Boleh entry. Risiko biasa.',
+                    icon: '🟢'
+                };
+            }
+            return {
+                level: 'LOWEST',
+                message: 'Boleh entry. Kondisi optimal.',
+                icon: '✅'
+            };
+        } else {
+            // Ketika TIDAK BOLEH, jelaskan WHY
+            if (contexts.includes('ENGINE_LOCKED_DANGER')) {
+                return {
+                    level: 'HIGHEST',
+                    message: 'TIDAK BOLEH karena engine terkunci (bahaya terdeteksi).',
+                    icon: '🛑'
+                };
+            }
+            if (contexts.includes('MARKET_FLAT')) {
+                return {
+                    level: 'MEDIUM',
+                    message: 'TIDAK BOLEH karena market datar (tidak tahu arah).',
+                    icon: '⏸️'
+                };
+            }
+            if (contexts.includes('NO_ZONE')) {
+                return {
+                    level: 'MEDIUM',
+                    message: 'TIDAK BOLEH karena belum ada zona aman.',
+                    icon: '📏'
+                };
+            }
+            return {
+                level: 'LOW',
+                message: 'TIDAK BOLEH karena kondisi belum terpenuhi.',
+                icon: '⏳'
+            };
+        }
+    }
+    
+    getDangerLevel() {
+        const recent = this.contextHistory.slice(-5);
+        const dangerCount = recent.filter(item => 
+            item.contexts.includes('ENGINE_LOCKED_DANGER') || 
+            item.contexts.includes('REGIME_CONTRADICTION')
+        ).length;
+        
+        if (dangerCount >= 3) return 'CRITICAL';
+        if (dangerCount >= 1) return 'HIGH';
+        return 'NORMAL';
+    }
+}
+
+const riskEngine = new RiskPsychology();
+
+// ================= INTENTION DISCRIMINATOR =================
+// Jawaban untuk TES MENTOK:
+// Engine membedakan "tidak tahu" vs "berbahaya" dengan:
+class IntentionDiscriminator {
+    static discriminate(state, contexts, history) {
+        // "Tidak tahu" = OBSERVE_ONLY, NO_ZONE, MARKET_FLAT
+        const uncertaintyMarkers = ['OBSERVE_ONLY', 'NO_ZONE', 'MARKET_FLAT'];
+        
+        // "Berbahaya" = LOCKED, REGIME_CONTRADICTION, ZONE_EDGE dengan flat market
+        const dangerMarkers = ['LOCKED', 'ENGINE_LOCKED_DANGER', 'REGIME_CONTRADICTION'];
+        
+        if (dangerMarkers.some(marker => state === marker || contexts.includes(marker))) {
+            return {
+                type: 'DANGER',
+                reason: 'Engine mendeteksi kondisi berbahaya',
+                confidence: 'HIGH',
+                action: 'AVOID'
+            };
+        }
+        
+        if (uncertaintyMarkers.some(marker => state === marker || contexts.includes(marker))) {
+            return {
+                type: 'UNCERTAINTY',
+                reason: 'Engine tidak memiliki informasi cukup',
+                confidence: 'LOW',
+                action: 'WAIT'
+            };
+        }
+        
+        return {
+            type: 'CALCULATED',
+            reason: 'Engine memiliki informasi tapi kondisi tidak terpenuhi',
+            confidence: 'MEDIUM',
+            action: 'MONITOR'
+        };
+    }
+}
+
+// ================= AUDIT LOG =================
+const auditLog = [];
+const logEl = document.getElementById('log');
+const L = t => {
+    logEl.textContent += t + "\n";
+    const event = {
+        timestamp: Date.now(),
+        message: t,
+        state: GOV.state,
+        regime: GOV.regime,
+        ghost: ghost ? {top: ghost.top, bottom: ghost.bottom} : null,
+        candle: candles.length ? candles[candles.length-1] : null
+    };
+    
+    auditLog.push(event);
+    
+    // Add to hash chain
+    const block = hashChain.add(t, {
+        state: GOV.state,
+        regime: GOV.regime,
+        ghost: ghost,
+        candleCount: candles.length
+    });
+    
+    // Update hash display
+    document.getElementById('currentHash').textContent = block.hash.substring(0, 12) + '...';
+    document.getElementById('globalState').textContent = GOV.state;
+};
+
+// ================= GOVERNANCE =================
+const STATE = {INIT: 'INIT', HOLD: 'HOLD', OBS: 'OBSERVE_ONLY', LOCK: 'LOCKED'};
+const REGIME = {UNKNOWN: 'UNKNOWN', BULL: 'BULL', BEAR: 'BEAR'};
+const GOV = {state: STATE.INIT, regime: REGIME.UNKNOWN, conf: 50, zero: 0, locked: false};
+const LIMIT = {ZERO: 10};
+
+// ================= PATCH 5: RISK → GOVERNANCE =================
+const RISK_GOV = {
+    cooldownOnHigh: true,
+    forceCooldownCandles: 3,
+    confPenalty: 5,
+    zeroPenalty: 1
+};
+
+// ================= PATCH 3: REGIME INERTIA =================
+const REGIME_INERTIA = {
+    need: 4,          // jumlah konfirmasi candle
+    bull: 0,
+    bear: 0,
+    flat: 0
+};
+
+// ================= PATCH 6: PERFORMANCE PRUNE CONFIG =================
+const PRUNE = {
+  maxCandles: 180,
+  maxAudit: 300,
+  maxHash: 300
+};
+
+// ================= PATCH 7: HARD LOCK CONFIG =================
+const HARD_LOCK = {
+  minCandles: 20,      // minimal candle setelah lock
+  minMinutes: 10      // minimal menit setelah lock
+};
+
+// ================= PATCH 8: DISCIPLINE CONFIG =================
+const DISCIPLINE = {
+  maxSkip: 5,        // BOLEH tapi diabaikan
+  penaltyConf: 10
+};
+
+
+// ================= PERSIST LOCK =================
+const PERSIST_KEY = 'GB_LOCKED_EXPIRY';
+function loadPersist() {
+    const saved = localStorage.getItem(PERSIST_KEY);
+    if (saved) {
+        try {
+            const {locked, expiry, sessionId} = JSON.parse(saved);
+            if (expiry > Date.now() && locked) {
+                // Check if this is from current session
+                const currentSession = sessionStorage.getItem('GB_SESSION_ID');
+                if (sessionId === currentSession) {
+                    GOV.locked = true;
+                    GOV.state = STATE.LOCK;
+                    document.getElementById('locked').style.display = 'flex';
+                    L(`LOCK RESTORED from session ${sessionId.substring(0, 8)}`);
+                }
+            }
+        } catch (e) {}
+    }
+}
+function persistLock() {
+    let sessionId = sessionStorage.getItem('GB_SESSION_ID');
+    if (!sessionId) {
+        sessionId = 'sess-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        sessionStorage.setItem('GB_SESSION_ID', sessionId);
+    }
+    const expiry = Date.now() + (30 * 60 * 1000);
+    localStorage.setItem(PERSIST_KEY, JSON.stringify({
+        locked: true, 
+        expiry, 
+        sessionId,
+        timestamp: new Date().toISOString() // Simpan timestamp saat lock terjadi (PATCH 7)
+    }));
+}
+function clearPersist() {
+    localStorage.removeItem(PERSIST_KEY);
+}
+
+// ================= COOLDOWN =================
+const COOLDOWN = {len: 5, rem: 0, active: false};
+
+// ================= TIME FRAME BUFFER =================
+const TF_SECONDS = {'1m': 60, '5m': 300, '15m': 900};
+function getTimeframeBuffer(basePrice) {
+    const tf = document.getElementById('tf').value;
+    const tfSec = TF_SECONDS[tf] || 300;
+    const baseBuffer = 0.0015;
+    const tfFactor = Math.sqrt(tfSec / 300);
+    return basePrice * baseBuffer * tfFactor;
+}
+
+// ================= PATCH 2: ATR-LIKE GHOST ZONE =================
+
+// Hitung ATR ringan (tanpa indikator berat)
+function calcATR(len = 14) {
+    if (candles.length < len + 1) return null;
+
+    let sum = 0;
+    for (let i = candles.length - len; i < candles.length; i++) {
+        const c = candles[i];
+        const p = candles[i - 1];
+        const tr = Math.max(
+            c.high - c.low,
+            Math.abs(c.high - p.close),
+            Math.abs(c.low - p.close)
+        );
+        sum += tr;
+    }
+    return sum / len;
+}
+
+// ================= GHOST ZONE =================
+function createGhost() {
+    const base = candles[candles.length - 1].close;
+    const atr = calcATR();
+    let buf;
+
+    if (atr) {
+        // FIX 3: ATR murni (ATR + Bias)
+        buf = atr; 
+    } else {
+        // Fallback ke buffer lama jika ATR belum cukup data
+        buf = getTimeframeBuffer(base);
+    }
+    
+    // Implementasi bias arah regime (PATCH 2)
+    let topBuf = buf;
+    let botBuf = buf;
+    
+    // Hanya terapkan bias jika ATR berhasil dihitung
+    if (atr) {
+        if (GOV.regime === REGIME.BULL) {
+            // Bull: Zona condong ke bawah (menahan)
+            topBuf = buf * 1.1; // Batas atas lebih lebar
+            botBuf = buf * 0.9; // Batas bawah lebih sempit
+        } else if (GOV.regime === REGIME.BEAR) {
+            // Bear: Zona condong ke atas (menahan)
+            topBuf = buf * 0.9; // Batas atas lebih sempit
+            botBuf = buf * 1.1; // Batas bawah lebih lebar
+        }
+    }
+
+    ghost = {top: base + topBuf, bottom: base - botBuf};
+    zoneTop.setData([{time: candles[candles.length - 1].time, value: ghost.top}]);
+    zoneBot.setData([{time: candles[candles.length - 1].time, value: ghost.bottom}]);
+    L(`GHOST top=${ghost.top.toFixed(2)} bottom=${ghost.bottom.toFixed(2)} buffer=${buf.toFixed(2)} regime_bias=${GOV.regime}`);
+}
+
+function removeGhost() {
+    ghost = null;
+    zoneTop.setData([]);
+    zoneBot.setData([]);
+}
+
+// ================= CHART =================
+const chart = LightweightCharts.createChart(
+    document.getElementById('chart'),
+    {layout: {background: {color: '#020617'}, textColor: '#e5e7eb'}, timeScale: {timeVisible: true}}
+);
+const cs = chart.addCandlestickSeries();
+const zoneTop = chart.addLineSeries({color: 'rgba(34,197,94,.6)', lineWidth: 1});
+const zoneBot = chart.addLineSeries({color: 'rgba(34,197,94,.6)', lineWidth: 1});
+
+// ================= DATA =================
+let candles = [], timer = null, lastCandleKey = '';
+let ghost = null, noEntryCount = 0, flatCount = 0;
+
+// ================= UTILS =================
+function candleColor(c) {
+    if (c.close > c.open) return 'BULL';
+    if (c.close < c.open) return 'BEAR';
+    return 'DOJI';
+}
+
+// ================= PATCH 4: CANDLE QUALITY =================
+function candleQuality(c) {
+    const range = c.high - c.low;
+    if (range <= 0) return { ok: false, reason: 'ZERO_RANGE' };
+
+    const body = Math.abs(c.close - c.open);
+    const bodyRatio = body / range;
+
+    const upperWick = c.high - Math.max(c.open, c.close);
+    const lowerWick = Math.min(c.open, c.close) - c.low;
+
+    return {
+        ok: bodyRatio >= 0.30,              // body minimal 30%
+        bodyRatio,
+        upperWick,
+        lowerWick,
+        range
+    };
+}
+
+function slope() {
+    if (candles.length < 30) return 0;
+    const a = candles[candles.length - 30].close;
+    const b = candles[candles.length - 1].close;
+    return (b - a) / a;
+}
+
+// ================= PATCH 6: PRUNE DATA =================
+function pruneData() {
+  if (candles.length > PRUNE.maxCandles) {
+    candles = candles.slice(-PRUNE.maxCandles);
+  }
+  if (auditLog.length > PRUNE.maxAudit) {
+    auditLog.splice(0, auditLog.length - PRUNE.maxAudit);
+  }
+  if (hashChain.chain.length > PRUNE.maxHash) {
+    hashChain.chain.splice(0, hashChain.chain.length - PRUNE.maxHash);
+  }
+}
+
+// ================= PATCH 7: HARD LOCK CHECK =================
+function hardLockCheck() {
+  if (!GOV.locked) return;
+
+  const now = Date.now();
+  const lockInfo = JSON.parse(localStorage.getItem(PERSIST_KEY) || '{}');
+  if (!lockInfo.timestamp) return;
+
+  const elapsedMin = (now - new Date(lockInfo.timestamp).getTime()) / 60000;
+  const candleOk = candles.length >= HARD_LOCK.minCandles;
+  const timeOk = elapsedMin >= HARD_LOCK.minMinutes;
+
+  if (candleOk && timeOk) {
+    // boleh unlock manual via STOP/START
+    L(`HARD LOCK conditions met (candles=${candles.length}, min=${elapsedMin.toFixed(1)})`);
+  } else {
+    // paksa tetap LOCK
+    GOV.state = STATE.LOCK;
+    GOV.locked = true;
+    document.getElementById('locked').style.display = 'flex';
+  }
+}
+
+// ================= PATCH 8: DISCIPLINE CHECK =================
+function disciplineCheck(valid) {
+  if (GOV.state !== STATE.HOLD) return;
+
+  if (valid) {
+    noEntryCount++;
+    if (noEntryCount >= DISCIPLINE.maxSkip) {
+      GOV.conf = Math.max(0, GOV.conf - DISCIPLINE.penaltyConf);
+      noEntryCount = 0;
+      L(`DISCIPLINE: terlalu sering skip BOLEH → conf penalized`);
+    }
+  } else {
+    noEntryCount = 0;
+  }
+}
+
+// ================= PATCH 9: ENGINE HEALTH =================
+function engineHealth() {
+  const health = {
+    state: GOV.state,
+    regime: GOV.regime,
+    conf: GOV.conf,
+    zero: GOV.zero,
+    candles: candles.length,
+    danger: riskEngine.getDangerLevel()
+  };
+  return health;
+}
+
+// ================= GOVERNANCE UPDATE (PATCH 3) =================
+function govUpdate(i) {
+    if (GOV.locked) return;
+
+    const s = slope();
+    const FLAT_TH = 0.0003;
+
+    // ================= INIT =================
+    if (GOV.regime === REGIME.UNKNOWN) {
+        if (Math.abs(s) < FLAT_TH) return;
+
+        GOV.regime = s > 0 ? REGIME.BULL : REGIME.BEAR;
+        GOV.state = STATE.HOLD;
+        REGIME_INERTIA.bull = 0;
+        REGIME_INERTIA.bear = 0;
+        REGIME_INERTIA.flat = 0;
+
+        L(`[${i}] INIT REGIME=${GOV.regime} slope=${s.toFixed(6)}`);
+        createGhost();
+        return;
+    }
+
+    // ================= FLAT =================
+    if (Math.abs(s) < FLAT_TH) {
+        REGIME_INERTIA.flat++;
+        REGIME_INERTIA.bull = 0;
+        REGIME_INERTIA.bear = 0;
+
+        if (REGIME_INERTIA.flat >= 3 && GOV.state === STATE.HOLD) {
+            GOV.state = STATE.OBS;
+            GOV.conf = 0;
+            GOV.zero++;
+            removeGhost();
+            if (!COOLDOWN.active) startCooldown(i);
+            L(`[${i}] STATE=OBSERVE_ONLY (flat inertia)`);
+        }
+        return;
+    }
+
+    // ================= TREND =================
+    REGIME_INERTIA.flat = 0;
+
+    if (s > 0) {
+        REGIME_INERTIA.bull++;
+        REGIME_INERTIA.bear = 0;
+    } else {
+        REGIME_INERTIA.bear++;
+        REGIME_INERTIA.bull = 0;
+    }
+
+    // ================= REGIME SWITCH =================
+    if (REGIME_INERTIA.bull >= REGIME_INERTIA.need && GOV.regime !== REGIME.BULL) {
+        GOV.regime = REGIME.BULL;
+        GOV.state = STATE.HOLD;
+        GOV.zero = 0;
+        REGIME_INERTIA.bull = 0;
+        L(`[${i}] REGIME SWITCH → BULL`);
+        createGhost();
+    }
+
+    if (REGIME_INERTIA.bear >= REGIME_INERTIA.need && GOV.regime !== REGIME.BEAR) {
+        GOV.regime = REGIME.BEAR;
+        GOV.state = STATE.HOLD;
+        GOV.zero = 0;
+        REGIME_INERTIA.bear = 0;
+        L(`[${i}] REGIME SWITCH → BEAR`);
+        createGhost();
+    }
+
+    // ================= RECOVERY FROM OBS =================
+    if (GOV.state === STATE.OBS) {
+        GOV.conf++;
+        if (GOV.conf >= 45) {
+            GOV.state = STATE.HOLD;
+            GOV.zero = 0;
+            L(`[${i}] STATE=HOLD (recovered)`);
+            createGhost();
+        }
+    }
+
+    // ================= LOCK =================
+    if (GOV.zero >= LIMIT.ZERO) {
+        GOV.locked = true;
+        GOV.state = STATE.LOCK;
+
+        const intention = IntentionDiscriminator.discriminate(
+            'LOCKED',
+            ['ENGINE_LOCKED_DANGER'],
+            auditLog.slice(-10)
+        );
+
+        L(`[${i}] LOCKED_INTENTION: ${JSON.stringify(intention)}`);
+        persistLock();
+        document.getElementById('locked').style.display = 'flex';
+        removeGhost();
+        L(`[${i}] LOCKED (zero=${GOV.zero})`);
+    }
+}
+
+// ================= PATCH 6: PERFORMANCE PRUNE (HOOK govUpdate) =================
+const _origGovUpdate = govUpdate;
+govUpdate = function(i){
+  _origGovUpdate(i);
+  pruneData(); // panggil prune tiap update candle
+};
+
+// ================= ENTRY VALIDATOR (PATCH 4) =================
+function entryValid() {
+    if (!ghost || GOV.state !== STATE.HOLD) return false;
+
+    const c = candles[candles.length - 1];
+    const col = candleColor(c);
+    if (col === 'DOJI') return false;
+
+    // === QUALITY CHECK ===
+    const q = candleQuality(c);
+    if (!q.ok) return false;
+
+    // Wick dominance check (anti fake breakout)
+    if (GOV.regime === REGIME.BULL && q.upperWick > q.lowerWick * 1.5) return false;
+    if (GOV.regime === REGIME.BEAR && q.lowerWick > q.upperWick * 1.5) return false;
+
+    // === GHOST ZONE CHECK ===
+    if (c.close < ghost.bottom || c.close > ghost.top) return false;
+
+    // === REGIME ALIGNMENT ===
+    if (GOV.regime === REGIME.BULL && col !== 'BULL') return false;
+    if (GOV.regime === REGIME.BEAR && col !== 'BEAR') return false;
+
+    return true;
+}
+
+// ================= COOLDOWN =================
+function startCooldown(i) {
+    COOLDOWN.active = true;
+    COOLDOWN.rem = COOLDOWN.len;
+    L(`[${i}] COOLDOWN_START ${COOLDOWN.len}`);
+}
+
+function tickCooldown(i) {
+    if (!COOLDOWN.active) return;
+    COOLDOWN.rem--;
+    L(`[${i}] COOLDOWN_TICK ${COOLDOWN.rem}`);
+    if (COOLDOWN.rem <= 0) COOLDOWN.active = false;
+}
+
+// ================= HUMAN UI =================
+function render() {
+    const box = document.getElementById('status');
+    const big = document.getElementById('big');
+    const hint = document.getElementById('hint');
+    const riskNote = document.getElementById('riskNote');
+
+    const valid = entryValid();
+    const lastCandle = candles[candles.length - 1];
+    
+    // Analyze risk context
+    const contexts = riskEngine.analyzeContext(
+        lastCandle, 
+        ghost, 
+        GOV.regime, 
+        GOV.state
+    );
+    
+    const riskInfo = riskEngine.getRiskMessage(contexts, valid);
+    const intention = IntentionDiscriminator.discriminate(
+        GOV.state, 
+        contexts, 
+        auditLog.slice(-10)
+    );
+    
+    // ================= RISK → GOVERNANCE ACTION =================
+    const riskActionLevel = riskInfo.level;
+    const isHighRisk = (riskActionLevel === 'HIGH' || riskActionLevel === 'HIGHEST');
+
+    // FIX 2: Rate limit risiko ke governance (hanya sekali per tick/candle)
+    if (isHighRisk) {
+        if (!render._riskTicked) {
+            render._riskTicked = true; // Tandai sudah diproses untuk candle ini
+
+            // Paksa cooldown bila belum aktif
+            if (!COOLDOWN.active && RISK_GOV.cooldownOnHigh) {
+                COOLDOWN.active = true;
+                COOLDOWN.rem = RISK_GOV.forceCooldownCandles;
+                L(`RISK ACTION: FORCE COOLDOWN (${COOLDOWN.rem})`);
+            }
+
+            // Turunkan confidence
+            if (GOV.conf > 0) {
+                GOV.conf = Math.max(0, GOV.conf - RISK_GOV.confPenalty);
+                L(`RISK ACTION: CONF PENALTY → ${GOV.conf}`);
+            }
+
+            // Tambah zero counter (menuju LOCK)
+            GOV.zero += RISK_GOV.zeroPenalty;
+            L(`RISK ACTION: ZERO++ → ${GOV.zero}`);
+        }
+    } else {
+        render._riskTicked = false; // Reset flag jika risiko tidak lagi HIGH/HIGHEST
+    }
+
+    if (GOV.state === STATE.HOLD) {
+        // noEntryCount dipindahkan ke disciplineCheck untuk implementasi PATCH 8
+    }
+
+    // Update UI based on state and risk
+    if (GOV.state === STATE.LOCK) {
+        box.className = 'statusBox red';
+        big.innerHTML = `🛑 STOP <span style="font-size:14px">(${riskInfo.icon})</span>`;
+        hint.textContent = riskInfo.message;
+        riskNote.textContent = `Intention: ${intention.type} - ${intention.reason}`;
+        return;
+    }
+
+    if (COOLDOWN.active) {
+        box.className = 'statusBox yellow';
+        big.innerHTML = `⏳ TUNGGU ${COOLDOWN.rem}`;
+        hint.textContent = riskInfo.message;
+        riskNote.textContent = `Intention: ${intention.type} - ${intention.reason}`;
+        return;
+    }
+
+    if (GOV.state === STATE.HOLD) {
+        if (valid) {
+            box.className = riskInfo.level === 'LOWEST' ? 'statusBox green' : 'statusBox risk';
+            big.innerHTML = `🟢 BOLEH <span style="font-size:14px">${riskInfo.icon}</span>`;
+            hint.textContent = riskInfo.message;
+            riskNote.textContent = `Risk: ${riskInfo.level} | Intention: ${intention.type}`;
+        } else {
+            box.className = 'statusBox yellow';
+            big.innerHTML = `⏳ TUNGGU`;
+            hint.textContent = riskInfo.message;
+            riskNote.textContent = `Intention: ${intention.type} - ${intention.reason}`;
+        }
+        return;
+    }
+
+    // STATE.INIT atau STATE.OBS
+    box.className = 'statusBox yellow';
+    big.innerHTML = `⏳ ANALYZING`;
+    hint.textContent = riskInfo.message;
+    riskNote.textContent = `Intention: ${intention.type} - ${intention.reason}`;
+}
+
+// ================= PATCH 7: HARD LOCK (HOOK render) =================
+const _origRender = render;
+render = function(){
+  hardLockCheck();
+  _origRender();
+};
+
+// ================= PATCH 8: SESSION DISCIPLINE (HOOK render) =================
+const _renderWithDiscipline = render;
+render = function(){
+  const valid = entryValid();
+  disciplineCheck(valid);
+  _renderWithDiscipline();
+};
+
+// ================= OVERLAY =================
+function overlay() {
+    if (!candles.length) return;
+    const d = new Date(candles[candles.length - 1].time * 1000);
+    const tf = document.getElementById('tf').value;
+    
+    let overlayText = `STATUS: ${GOV.state}`;
+    overlayText += `\nARAH: ${GOV.regime}`;
+    overlayText += `\nTF: ${tf}`;
+    overlayText += `\nTIME: ${d.toLocaleTimeString()}`;
+    
+    if (ghost) {
+        const zonePct = ((ghost.top - ghost.bottom) / ghost.bottom * 10000).toFixed(1);
+        overlayText += `\nZONA: ±${zonePct} bp`;
+    }
+    
+    const dangerLevel = riskEngine.getDangerLevel();
+    if (dangerLevel !== 'NORMAL') {
+        overlayText += `\n🚨 DANGER: ${dangerLevel}`;
+    }
+    
+    document.getElementById('overlay').textContent = overlayText;
+}
+
+// ================= MARKET DATA =================
+async function preload() {
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${pair.value}&interval=${tfSelect.value}&limit=120`);
+    const j = await r.json();
+    candles = j.map(k => ({
+        time: Math.floor(k[0] / 1000),
+        open: +k[1],
+        high: +k[2],
+        low: +k[3],
+        close: +k[4]
+    }));
+    cs.setData(candles);
+    lastCandleKey = `${j[j.length - 1][0]}-${j[j.length - 1][4]}`;
+    L(`PRELOAD ${candles.length} candles, lastKey: ${lastCandleKey}`);
+}
+
+// ================= PATCH 1: WS CLOSED-CANDLE FEED =================
+// Tujuan:
+// - Ambil candle CLOSED (x=true) via WebSocket
+// - Hindari repaint & candle forming
+// - Tidak menghapus polling (fallback aman)
+
+let ws = null;
+let wsActive = false;
+
+function startWebSocket() {
+    stopWebSocket();
+
+    const symbol = pair.value.toLowerCase();
+    const tf = tfSelect.value;
+    const url = `wss://stream.binance.com:9443/ws/${symbol}@kline_${tf}`;
+
+    ws = new WebSocket(url);
+
+    ws.onopen = () => {
+        wsActive = true;
+        L(`WS CONNECTED ${pair.value} ${tf}`);
+    };
+
+    ws.onclose = () => {
+        wsActive = false;
+        L(`WS CLOSED - fallback REST active`);
+    };
+
+    ws.onerror = (e) => {
+        wsActive = false;
+        L(`WS ERROR - fallback REST`);
+    };
+
+    ws.onmessage = (msg) => {
+        try {
+            const data = JSON.parse(msg.data);
+            if (!data.k) return;
+
+            const k = data.k;
+
+            // ❗ PENTING: hanya candle CLOSED
+            if (!k.x) return;
+
+            const candleKey = `${k.t}-${k.c}`;
+            if (candleKey === lastCandleKey) return;
+
+            lastCandleKey = candleKey;
+
+            const c = {
+                time: Math.floor(k.t / 1000),
+                open: +k.o,
+                high: +k.h,
+                low: +k.l,
+                close: +k.c
+            };
+
+            candles.push(c);
+            cs.update(c);
+
+            if (candles.length > 200) {
+                candles = candles.slice(-150);
+            }
+
+            const i = candles.length - 1;
+            govUpdate(i);
+            tickCooldown(i);
+            render();
+            overlay();
+
+        } catch (err) {
+            L(`WS PARSE ERROR`);
+        }
+    };
+}
+
+function stopWebSocket() {
+    if (ws) {
+        ws.close();
+        ws = null;
+    }
+    wsActive = false;
+}
+
+// FIX 1: poll() dipindahkan ke dalam tag <script>
+async function poll() {
+    // Abaikan polling jika WS aktif
+    if (wsActive) return;
+
+    try {
+        const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${pair.value}&interval=${tfSelect.value}&limit=2`);
+        const j = await r.json();
+        const k = j[j.length - 1];
+        
+        const candleKey = `${k[0]}-${k[4]}`;
+        if (candleKey === lastCandleKey) return;
+        
+        lastCandleKey = candleKey;
+        const c = {
+            time: Math.floor(k[0] / 1000),
+            open: +k[1],
+            high: +k[2],
+            low: +k[3],
+            close: +k[4]
+        };
+        
+        candles.push(c);
+        cs.update(c);
+        
+        if (candles.length > 200) {
+            candles = candles.slice(-150);
+        }
+        
+        const i = candles.length - 1;
+        govUpdate(i);
+        tickCooldown(i);
+        render();
+        overlay();
+        
+    } catch (err) {
+        L(`POLL ERROR: ${err.message}`);
+    }
+}
+
+// ================= CONTROL =================
+const pair = document.getElementById('pair');
+const tfSelect = document.getElementById('tf');
+
+function reset() {
+    candles = [];
+    cs.setData([]);
+    zoneTop.setData([]);
+    zoneBot.setData([]);
+    GOV.state = STATE.INIT;
+    GOV.regime = REGIME.UNKNOWN;
+    GOV.zero = 0;
+    GOV.locked = false;
+    GOV.conf = 50;
+    COOLDOWN.active = false;
+    ghost = null;
+    noEntryCount = 0;
+    flatCount = 0;
+    lastCandleKey = '';
+    REGIME_INERTIA.bull = 0; // Reset Inertia
+    REGIME_INERTIA.bear = 0; // Reset Inertia
+    REGIME_INERTIA.flat = 0; // Reset Inertia
+    document.getElementById('locked').style.display = 'none';
+    clearPersist();
+    loadPersist();
+    render._riskTicked = false; // Pastikan flag reset
+}
+
+async function start() {
+    stop();
+    logEl.textContent = '';
+    reset();
+    await preload();
+    startWebSocket(); // ⬅️ TAMBAH INI
+    timer = setInterval(poll, 5000);
+    L("SYSTEM STARTED - GLOBAL TRUTH EDITION");
+    L(`Session ID: ${sessionStorage.getItem('GB_SESSION_ID')?.substring(0, 16) || 'NEW'}`);
+}
+
+function stop() {
+    if (timer) {
+        clearInterval(timer);
+        timer = null;
+    }
+    stopWebSocket();
+}
+
+function exportLog() {
+    const exportData = {
+        meta: {
+            exported: new Date().toISOString(),
+            sessionId: sessionStorage.getItem('GB_SESSION_ID'),
+            pair: pair.value,
+            timeframe: tfSelect.value
+        },
+        auditLog: auditLog,
+        hashChain: hashChain.export(),
+        verification: hashChain.verify(),
+        finalState: {
+            state: GOV.state,
+            regime: GOV.regime,
+            locked: GOV.locked,
+            lastCandle: candles[candles.length - 1]
+        }
+    };
+    
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ghost-bandit-log-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    L(`LOG EXPORTED with hash chain verification`);
+}
+
+// Initialize
+loadPersist();
+
+// ================= PATCH 9: ENGINE SELF-AWARENESS (EXPOSED) =================
+// expose read-only (opsional)
+window.GB_HEALTH = engineHealth;
+/*****************************************************************
+ PATCH 10 — SESSION MARKET CONTEXT (ASIA / LONDON / NY)
+ Tujuan:
+ - Bukan sinyal
+ - Hanya konteks waktu (psikologis & likuiditas)
+******************************************************************/
+function getSessionUTC() {
+  const h = new Date().getUTCHours();
+  if (h >= 0 && h < 7) return 'ASIA';
+  if (h >= 7 && h < 13) return 'LONDON';
+  if (h >= 13 && h < 20) return 'NEW YORK';
+  return 'ROLL';
+}
+
+// inject ke overlay
+const _origOverlay = overlay;
+overlay = function(){
+  _origOverlay();
+  const sess = getSessionUTC();
+  document.getElementById('overlay').textContent += `\nSESSION: ${sess}`;
+};
+
+
+/*****************************************************************
+ PATCH 11 — HTF MICRO CONFIRMATION (RINGAN, NO INDICATOR)
+ Tujuan:
+ - Mencegah entry lawan struktur HTF
+ - Tetap ringan (tanpa EMA/RSI)
+******************************************************************/
+function htfBias() {
+  if (candles.length < 60) return null;
+
+  const a = candles[candles.length - 60].close;
+  const b = candles[candles.length - 1].close;
+  const bias = (b - a) / a;
+
+  if (bias > 0.001) return 'BULL';
+  if (bias < -0.001) return 'BEAR';
+  return 'FLAT';
+}
+
+// hook ke entryValid
+const _origEntryValid = entryValid;
+entryValid = function(){
+  const baseValid = _origEntryValid();
+  if (!baseValid) return false;
+
+  const bias = htfBias();
+  if (!bias || bias === 'FLAT') return false;
+  if (bias !== GOV.regime) return false;
+
+  return true;
+};
+
+
+/*****************************************************************
+ PATCH 12 — MICRO STRUCTURE FILTER (HH / LL RINGAN)
+ Tujuan:
+ - Tolak entry kalau struktur mulai rusak
+******************************************************************/
+function microStructureOK() {
+  if (candles.length < 5) return true;
+
+  const c1 = candles[candles.length - 1];
+  const c2 = candles[candles.length - 2];
+  const c3 = candles[candles.length - 3];
+
+  if (GOV.regime === REGIME.BULL) {
+    return c1.low >= c2.low && c2.low >= c3.low;
+  }
+  if (GOV.regime === REGIME.BEAR) {
+    return c1.high <= c2.high && c2.high <= c3.high;
+  }
+  return true;
+}
+
+// inject ke entryValid
+const _entryWithStruct = entryValid;
+entryValid = function(){
+  if (!_entryWithStruct()) return false;
+  if (!microStructureOK()) return false;
+  return true;
+};
+
+
+/*****************************************************************
+ PATCH 13 — ENGINE FATIGUE MODE (ANTI OVERCONFIDENCE)
+ Tujuan:
+ - Kalau terlalu lama HOLD tanpa hasil
+ - Engine otomatis lebih konservatif
+******************************************************************/
+const FATIGUE = {
+  maxHoldCandles: 40,
+  penaltyConf: 15
+};
+
+let holdCounter = 0;
+
+const _govWithFatigue = govUpdate;
+govUpdate = function(i){
+  _govWithFatigue(i);
+
+  if (GOV.state === STATE.HOLD) {
+    holdCounter++;
+    if (holdCounter >= FATIGUE.maxHoldCandles) {
+      GOV.conf = Math.max(0, GOV.conf - FATIGUE.penaltyConf);
+      holdCounter = 0;
+      L(`FATIGUE MODE: HOLD terlalu lama → conf diturunkan`);
+    }
+  } else {
+    holdCounter = 0;
+  }
+};
+</script>
+</body>
+</html>

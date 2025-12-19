@@ -3,104 +3,134 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V38.1 - GUARDIAN ELITE (SAFETY LOCK)</title>
+    <title>V40.0 - MARKET BLUEPRINT (HIGH ACCURACY)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
-        #warning-banner { background: #600; color: #fff; padding: 5px; text-align: center; font-weight: 900; font-size: 11px; border-bottom: 1px solid red; display: none; z-index: 2000; }
-        #safety-lock-indicator { background: #d97706; color: #000; padding: 3px; text-align: center; font-weight: 900; font-size: 10px; display: none; z-index: 2000; }
-        #header { padding: 5px; background: #111; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-bottom: 1px solid #333; }
+        #header { padding: 5px; background: #111; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-bottom: 2px solid #333; }
         select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; font-size: 12px; cursor: pointer; width: 100%; }
+        #warning-banner { background: #600; color: #fff; padding: 5px; text-align: center; font-weight: 900; font-size: 11px; display: none; z-index: 2000; border-bottom: 1px solid red; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .chart-container { display: flex; flex-direction: column; height: 100vh; }
         .chart-box { flex: 1; position: relative; border-bottom: 1px solid #222; }
-        .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; display: flex; gap: 5px; background: rgba(0,0,0,0.8); padding: 3px; border: 1px solid #444; }
-        #side-panel { position: absolute; top: 90px; right: 5px; z-index: 50; background: rgba(0,0,0,0.85); border: 1px solid #f0f; padding: 6px; font-size: 10px; color: #0f0; pointer-events: none; }
-        #hajar-notif { display: none; position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 280px; background: rgba(255,0,0,0.95); padding: 15px; z-index: 9999; text-align: center; border: 3px solid yellow; border-radius: 8px; }
-        .is-locked { filter: grayscale(1) opacity(0.5); pointer-events: none; }
+        .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; background: rgba(0,0,0,0.8); padding: 3px; border: 1px solid #444; border-radius: 4px; }
+        .tf-bar select { padding: 2px; font-size: 10px; width: 65px; border: 1px solid #0f0; }
+        #side-panel { position: absolute; top: 90px; right: 5px; z-index: 50; background: rgba(0,0,0,0.9); border: 1px solid #f0f; padding: 8px; font-size: 10px; color: #0f0; pointer-events: none; border-radius: 5px; }
+        #hajar-notif { display: none; position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 280px; background: rgba(255,0,0,0.95); padding: 15px; z-index: 9999; text-align: center; border: 3px solid yellow; border-radius: 10px; box-shadow: 0 0 20px #f00; }
     </style>
 </head>
 <body id="capture-area">
 
-<div id="warning-banner">⚠️ AWAS! TF GEDE (M30-D1) MANIPULASI ⚠️</div>
-<div id="safety-lock-indicator">🔒 SAFETY LOCK ACTIVE: VOLATILITY TOO HIGH - NO ENTRY!</div>
+<div id="warning-banner">⚠️ DANGER: HIGH TF REJECTION - MONITOR BIG FLOW! ⚠️</div>
 
 <div id="hajar-notif">
     <h2 id="h-tf" style="margin:0; color:yellow; font-size: 26px;">HAJAR!</h2>
-    <p id="h-info" style="font-weight:900; margin: 10px 0;"></p>
-    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:bold;">SAYONARA!</button>
+    <p id="h-info" style="font-weight:900; margin: 10px 0; color: white;"></p>
+    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:bold; width: 100%; padding: 10px; cursor: pointer;">SAYA PAHAM (SCREENSHOT SAVED)</button>
 </div>
 
 <div id="side-panel">
-    <b style="color:#f0f; border-bottom:1px solid #f0f; display:block;">MISSIONS</b>
+    <b style="color:#f0f; border-bottom:1px solid #f0f; display:block; margin-bottom: 5px;">MISSION BLUEPRINT</b>
     <div id="misi-list"></div>
-    <div id="timer" style="font-size:8px; color:#666; margin-top:4px;">REFRESH: 05:00</div>
+    <div id="timer" style="font-size:8px; color:#666; margin-top:5px;">RE-SCAN: 05:00</div>
 </div>
 
-<div class="container" style="display: flex; flex-direction: column; height: 100vh;">
+<div class="chart-container">
     <div id="header">
-        <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
-        <button onclick="initApp()">ACTIVATE V38.1 ELITE</button>
+        <select id="symbol">
+            <option value="BTCUSDT">BTC/USDT</option>
+            <option value="ETHUSDT">ETH/USDT</option>
+            <option value="SOLUSDT">SOL/USDT</option>
+        </select>
+        <button onclick="initApp()">ACTIVATE BLUEPRINT V40.0</button>
     </div>
-    <div class="chart-box"><div class="tf-bar"><select id="sel-top" onchange="changeTF('top')"><option value="1h">H1</option><option value="1d" selected>D1</option></select></div><div id="canvas-top" style="height:100%"></div></div>
-    <div class="chart-box"><div class="tf-bar"><select id="sel-bottom" onchange="changeTF('bottom')"><option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option></select></div><div id="canvas-bottom" style="height:100%"></div></div>
+    
+    <div class="chart-box">
+        <div class="tf-bar">
+            <select id="sel-top" onchange="changeTF('top')">
+                <option value="1h">H1</option><option value="4h">H4</option><option value="1d" selected>D1</option>
+            </select>
+        </div>
+        <div id="canvas-top" style="height:100%"></div>
+    </div>
+
+    <div class="chart-box">
+        <div class="tf-bar">
+            <select id="sel-bottom" onchange="changeTF('bottom')">
+                <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option><option value="30m">M30</option>
+            </select>
+        </div>
+        <div id="canvas-bottom" style="height:100%"></div>
+    </div>
 </div>
 
 <script>
-let missions = {}, charts = {}, webs = {}, rSec = 300, isLocked = false;
+let missions = {}, charts = {}, webs = {}, rSec = 300;
 const mCols = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff' };
 
 function takeScreenshot(tf) {
     html2canvas(document.body).then(canvas => {
-        let link = document.createElement('a'); link.download = `V38_HAJAR_${tf}_${Date.now()}.png`;
-        link.href = canvas.toDataURL(); link.click();
+        let link = document.createElement('a');
+        link.download = `V40_HAJAR_${tf}_${Date.now()}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
     });
 }
 
-async function syncM() {
+// HIGH ACCURACY ENGINE: DECODE BLUEPRINT MARKET
+async function calculateMission(sym, tf) {
+    try {
+        const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`);
+        const d = await r.json();
+        const prev = d[d.length - 2];
+        const pO = +prev[1], pH = +prev[2], pL = +prev[3], pC = +prev[4];
+
+        // LOGIC HIDDEN MISSION: Berdasarkan OHLC & Wick Story
+        // Mencari area yang "diciptakan" tapi ditinggalkan (SnD Zone)
+        let target;
+        if (pC > pO) { // Bullish sebelumnya: Mencari Rejection Wick bawah atau High Break
+            target = (pC - pL) > (pH - pC) ? pL : pH;
+        } else { // Bearish sebelumnya: Mencari Rejection Wick atas atau Low Break
+            target = (pO - pL) < (pH - pO) ? pH : pL;
+        }
+        return target;
+    } catch(e) { return null; }
+}
+
+async function syncMissions() {
     const sym = document.getElementById('symbol').value;
     const list = document.getElementById('misi-list'); list.innerHTML = '';
-    for (let tf of ['1m','5m','15m','30m','1h','4h','1d']) {
-        try {
-            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=5`);
-            const d = await r.json();
-            const last = parseFloat(d[d.length-1][4]);
-            missions[tf] = last > parseFloat(d[d.length-2][2]) ? parseFloat(d[d.length-2][3]) : parseFloat(d[d.length-2][2]);
-            if(mCols[tf]) list.innerHTML += `<div style="color:${mCols[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`;
-        } catch(e){}
+    const tfs = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'];
+    
+    for (let tf of tfs) {
+        const val = await calculateMission(sym, tf);
+        if (val) {
+            missions[tf] = val;
+            if(mCols[tf]) list.innerHTML += `<div style="color:${mCols[tf]}">${tf.toUpperCase()}: ${val.toFixed(2)}</div>`;
+        }
     }
     rSec = 300;
 }
 
-function checkSafety(p, k) {
-    const bodySize = Math.abs(k.o - k.c);
-    const volatility = bodySize / p;
-    // Safety Lock Logic: Jika candle bergerak lebih dari 0.4% dalam satu periode TF kecil
-    if (volatility > 0.004) {
-        isLocked = true;
-        document.getElementById('safety-lock-indicator').style.display = 'block';
-    } else {
-        isLocked = false;
-        document.getElementById('safety-lock-indicator').style.display = 'none';
-    }
-}
-
-function check(p, k, tf) {
-    const banner = document.getElementById('warning-banner');
+function checkLogic(p, k, tf) {
     const d1 = missions['1d'], h1 = missions['1h'];
-    
-    let danger = false;
-    [d1, h1].forEach(m => { if(m && Math.abs(p-m) > (p*0.015) && ((p>m && k.c<k.o)||(p<m && k.c>k.o))) danger = true; });
-    banner.style.display = danger ? 'block' : 'none';
+    const banner = document.getElementById('warning-banner');
 
-    if(isLocked) return; // JANGAN LANJUT KALAU KUNCI AKTIF
+    // Guardian: Rejection SnR di TF Gede (M30 - D1)
+    if(d1 && ((p > d1 && k.c < k.o) || (p < d1 && k.c > k.o))) {
+        banner.style.display = 'block';
+    } else { banner.style.display = 'none'; }
 
+    // HAJAR: Ideal Entry di SnD Blueprint
     const target = missions[tf];
     if(target && tf.includes('m')) {
-        if(Math.abs(p-target)/p > 0.008 && ((p>target && k.c<k.o)||(p<target && k.c>k.o))) {
+        const dist = Math.abs(p - target) / p;
+        if(dist < 0.003 && ((p > target && k.c < k.o) || (p < target && k.c > k.o))) {
             const n = document.getElementById('hajar-notif');
             if(n.style.display !== 'block') {
-                document.getElementById('h-info').innerText = p > target ? `SELL IDEAL -> ${target}` : `BUY IDEAL -> ${target}`;
+                document.getElementById('h-info').innerText = p > target ? `REJECT SUPPLY: IDEAL SELL` : `REJECT DEMAND: IDEAL BUY`;
                 n.style.display = 'block';
                 new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
                 takeScreenshot(tf.toUpperCase());
@@ -109,40 +139,51 @@ function check(p, k, tf) {
     }
 }
 
-async function load(pos) {
+async function loadChart(pos) {
     const sym = document.getElementById('symbol').value;
     const tf = document.getElementById(pos === 'top' ? 'sel-top' : 'sel-bottom').value;
-    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`);
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=120`);
     const d = await r.json();
     charts[pos].s.setData(d.map(k => ({ time: k[0]/1000, open: +k[1], high: +k[2], low: +k[3], close: +k[4] })));
+    
     if(webs[pos]) webs[pos].close();
     webs[pos] = new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${tf}`);
     webs[pos].onmessage = e => {
         const k = JSON.parse(e.data).k; const p = parseFloat(k.c);
         charts[pos].s.update({ time: k.t/1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c });
-        checkSafety(p, k);
-        check(p, k, tf);
+        
+        // Auto-Delete Mission if Achieved (1h Cleanup)
+        for(let m in mCols) {
+            if(missions[m] && Math.abs(p - missions[m]) < (p * 0.0001)) {
+                setTimeout(() => { missions[m] = null; }, 3600000);
+            }
+        }
+        
+        checkLogic(p, k, tf);
         const now = Math.floor(Date.now()/1000);
         for(let m in mCols) if(missions[m]) charts[pos].lines[m].setData([{time: now-100000, value: missions[m]}, {time: now+100000, value: missions[m]}]);
     };
 }
 
-function initApp() {
-    charts.top = charts.top || createC('canvas-top');
-    charts.bottom = charts.bottom || createC('canvas-bottom');
-    syncM().then(() => { load('top'); load('bottom'); });
-}
-
 function createC(id) {
-    const c = LightweightCharts.createChart(document.getElementById(id), { layout: { background: { color: '#000' }, textColor: '#ccc' }, grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } } });
+    const c = LightweightCharts.createChart(document.getElementById(id), { 
+        layout: { background: { color: '#000' }, textColor: '#ccc' },
+        grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
+        timeScale: { timeVisible: true, borderVisible: false }
+    });
     const s = c.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
     const lines = {};
     for (let tf in mCols) lines[tf] = c.addLineSeries({ color: mCols[tf], lineWidth: 2, priceLineVisible: false });
     return { c, s, lines };
 }
 
-function changeTF(pos) { load(pos); }
-setInterval(() => { if(rSec > 0) rSec--; else syncM(); document.getElementById('timer').innerText = `REFRESH: ${Math.floor(rSec/60)}:${(rSec%60).toString().padStart(2,'0')}`; }, 1000);
+function changeTF(pos) { loadChart(pos); }
+function initApp() {
+    charts.top = charts.top || createC('canvas-top');
+    charts.bottom = charts.bottom || createC('canvas-bottom');
+    syncMissions().then(() => { loadChart('top'); loadChart('bottom'); });
+}
+setInterval(() => { if(rSec > 0) rSec--; else syncMissions(); document.getElementById('timer').innerText = `RE-SCAN: ${Math.floor(rSec/60)}:${(rSec%60).toString().padStart(2,'0')}`; }, 1000);
 </script>
 </body>
 </html>

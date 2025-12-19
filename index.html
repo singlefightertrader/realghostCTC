@@ -3,193 +3,165 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V36.1 - SIREN SNIPER (H1-D1 RADAR)</title>
+    <title>V38.0 - SUPREME SNIPER (AUTO-SHOT)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
         .container { display: flex; flex-direction: column; height: 100vh; }
-        #header { padding: 5px 10px; background: #111; display: grid; grid-template-columns: 2fr 1fr; gap: 10px; border-bottom: 2px solid #333; }
-        select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 11px; }
-        .view-area { flex: 1; display: flex; flex-direction: column; position: relative; }
-        .chart-container { flex: 1; position: relative; border-bottom: 1px solid #222; }
-        .status-overlay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 100; padding: 12px 25px; border-radius: 4px; font-weight: 900; font-size: 14px; text-align: center; min-width: 380px; border: 3px solid #fff; pointer-events: none; }
-        
-        /* WHALE SIREN MODAL */
-        #whale-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,0,0,0.95); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; border: 15px solid #fff; }
-        #whale-modal h1 { font-size: 45px; margin: 0; color: #fff; text-shadow: 5px 5px #000; animation: shake 0.5s infinite; }
-        @keyframes shake { 0% { transform: translate(1px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
-        #whale-modal .command { font-size: 30px; background: #fff; color: #f00; padding: 15px; margin: 20px 0; font-weight: 900; border: 5px solid #000; }
-        #whale-modal button { background: #000; color: #fff; border: 5px solid #fff; font-size: 25px; padding: 20px 50px; cursor: pointer; }
-
-        @keyframes flash-red { 0% { background: #000; } 50% { background: #f00; } 100% { background: #000; } }
-        .is-flashing { animation: flash-red 0.2s infinite; }
-        .misi-info { position: absolute; bottom: 5px; right: 5px; z-index: 10; background: rgba(0,0,0,0.9); padding: 5px; border: 1px solid #444; font-size: 9px; line-height: 1.3; }
-        .tf-ctrl-box { position: absolute; top: 5px; left: 5px; z-index: 10; display: flex; gap: 5px; background: rgba(0,0,0,0.8); padding: 3px; border: 1px solid #0f0; }
+        #warning-banner { background: #600; color: #fff; padding: 5px; text-align: center; font-weight: 900; font-size: 11px; border-bottom: 1px solid red; display: none; z-index: 2000; animation: flash 1s infinite; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        #header { padding: 5px; background: #111; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-bottom: 1px solid #333; }
+        select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; font-size: 12px; cursor: pointer; width: 100%; }
+        .chart-box { flex: 1; position: relative; border-bottom: 1px solid #222; }
+        .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; display: flex; gap: 5px; background: rgba(0,0,0,0.8); padding: 3px; border-radius: 4px; border: 1px solid #444; }
+        .tf-bar select { padding: 2px; font-size: 10px; border: 1px solid #0f0; width: 65px; }
+        #side-panel { position: absolute; top: 80px; right: 5px; z-index: 50; background: rgba(0,0,0,0.8); border: 1px solid #f0f; padding: 6px; font-size: 10px; color: #0f0; border-radius: 4px; pointer-events: none; }
+        #hajar-notif { display: none; position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 280px; background: rgba(255,0,0,0.95); padding: 15px; z-index: 9999; text-align: center; border: 3px solid yellow; border-radius: 8px; box-shadow: 0 0 20px #f00; }
     </style>
 </head>
-<body>
-<div id="whale-modal">
-    <h1>⚠️ WHALE RADAR ACTIVE ⚠️</h1>
-    <div id="whale-command" class="command">TUNGGU ANALISA...</div>
-    <div id="whale-details" style="font-size:16px; margin-bottom:20px; color:white; font-weight:bold;"></div>
-    <button onclick="stopSiren()">SAYA SUDAH AMBIL POSISI!</button>
+<body id="capture-area">
+
+<div id="warning-banner">⚠️ AWAS! TF GEDE (M30-D1) SEDANG MANIPULASI ⚠️</div>
+
+<div id="hajar-notif">
+    <h2 id="h-tf" style="margin:0; color:yellow; font-size: 26px;">HAJAR!</h2>
+    <p id="h-info" style="font-weight:900; margin: 10px 0; color: white;"></p>
+    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:bold;">CLOSE / EXECUTED</button>
+</div>
+
+<div id="side-panel">
+    <b style="color:#f0f; border-bottom:1px solid #f0f;">DYNAMIC MISSIONS</b>
+    <div id="misi-list"></div>
+    <div id="timer" style="font-size:8px; color:#666; margin-top:4px;">REFRESH: 05:00</div>
 </div>
 
 <div class="container">
     <div id="header">
         <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
-        <button id="btnConnect">START SIREN ENGINE V36.1</button>
+        <button onclick="initApp()">ACTIVATE SUPREME V38.0</button>
     </div>
-    <div class="view-area">
-        <div class="chart-container" id="box-top">
-            <div id="notif-top" class="status-overlay" style="display:none"></div>
-            <div class="tf-ctrl-box">
-                <select id="tf-top">
-                    <option value="1m">M1</option><option value="5m">M5</option><option value="15m" selected>M15</option>
-                    <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option>
-                </select>
-            </div>
-            <div id="canvas-top" style="height:100%"></div>
-            <div class="misi-info" id="misi-top"></div>
+    
+    <div class="chart-box" id="box-top">
+        <div class="tf-bar">
+            <select id="sel-top" onchange="changeTF('top')">
+                <option value="1m">M1</option><option value="5m">M5</option><option value="15m">M15</option>
+                <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d" selected>D1</option>
+            </select>
         </div>
-        <div class="chart-container" id="box-bottom">
-            <div id="notif-bottom" class="status-overlay" style="display:none"></div>
-            <div class="tf-ctrl-box">
-                <select id="tf-bottom">
-                    <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option>
-                    <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option>
-                </select>
-            </div>
-            <div id="canvas-bottom" style="height:100%"></div>
-            <div class="misi-info" id="misi-bottom"></div>
+        <div id="canvas-top" style="height:100%"></div>
+    </div>
+
+    <div class="chart-box" id="box-bottom">
+        <div class="tf-bar">
+            <select id="sel-bottom" onchange="changeTF('bottom')">
+                <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option>
+                <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option>
+            </select>
         </div>
+        <div id="canvas-bottom" style="height:100%"></div>
     </div>
 </div>
 
 <script>
-let missions = {}, charts = {}, websocks = {};
-let sirenInterval = null;
-const colors = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff', '4h': '#ffa500', '1d': '#ff4500' };
+let missions = {}, charts = {}, webs = {}, rSec = 300;
+const mCols = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff' };
 
-function playSiren() {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    let count = 0;
-    sirenInterval = setInterval(() => {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = count % 2 === 0 ? 'sine' : 'sawtooth';
-        o.frequency.value = count % 2 === 0 ? 800 : 1200;
-        o.connect(g); g.connect(ctx.destination);
-        o.start(); g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
-        o.stop(ctx.currentTime + 0.5);
-        count++;
-        if(count > 20) stopSiren(); // Berhenti setelah 10 detik otomatis
-    }, 500);
+function takeScreenshot(tfName) {
+    html2canvas(document.getElementById("capture-area")).then(canvas => {
+        let link = document.createElement('a');
+        link.download = `HAJAR_${tfName}_${new Date().getTime()}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+    });
 }
 
-function stopSiren() {
-    clearInterval(sirenInterval);
-    document.getElementById('whale-modal').style.display = 'none';
-    document.body.classList.remove('is-flashing');
+function beep() {
+    const c = new (window.AudioContext || window.webkitAudioContext)();
+    const o = c.createOscillator(); const g = c.createGain(); o.connect(g); g.connect(c.destination);
+    o.frequency.value = 1000; o.start(); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.2); o.stop(c.currentTime + 0.2);
 }
 
-function createChart(id) {
+function createC(id) {
     const c = LightweightCharts.createChart(document.getElementById(id), {
         layout: { background: { color: '#000' }, textColor: '#ccc' },
         grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
-        timeScale: { timeVisible: true }
+        timeScale: { borderVisible: false, timeVisible: true }
     });
     const s = c.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
     const lines = {};
-    for (let tf in colors) { lines[tf] = c.addLineSeries({ color: colors[tf], lineWidth: 2, priceLineVisible: false }); }
+    for (let tf in mCols) lines[tf] = c.addLineSeries({ color: mCols[tf], lineWidth: 2, priceLineVisible: false });
     return { c, s, lines };
 }
 
-charts.top = createChart('canvas-top');
-charts.bottom = createChart('canvas-bottom');
-
-async function syncAll() {
+async function syncM() {
     const sym = document.getElementById('symbol').value;
+    const list = document.getElementById('misi-list'); list.innerHTML = '';
     const tfs = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'];
     for (let tf of tfs) {
         try {
-            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=50`);
+            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=5`);
             const d = await r.json();
-            const lastClose = parseFloat(d[d.length-1][4]);
-            missions[tf] = parseFloat(d[d.length-2][1]); // Pakai Open price candle sebelumnya sebagai Mission
-        } catch(e) {}
+            const last = parseFloat(d[d.length-1][4]);
+            missions[tf] = last > parseFloat(d[d.length-2][2]) ? parseFloat(d[d.length-2][3]) : parseFloat(d[d.length-2][2]);
+            if(mCols[tf]) list.innerHTML += `<div style="color:${mCols[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`;
+        } catch(e){}
     }
-    renderMissions();
+    rSec = 300;
 }
 
-function renderMissions() {
-    ['top', 'bottom'].forEach(p => {
-        const el = document.getElementById(`misi-${p}`);
-        el.innerHTML = "<b>SIREN RADAR:</b>";
-        for (let tf in missions) { 
-            const color = colors[tf] || '#fff';
-            el.innerHTML += `<div style="color:${color}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`; 
-        }
-    });
-}
-
-function checkWhaleDanger(p, k) {
-    const alerts = [];
-    const tfs = ['1h', '4h', '1d'];
+function check(p, k, tf) {
+    const banner = document.getElementById('warning-banner');
+    const d1 = missions['1d'], h1 = missions['1h'], m30 = missions['30m'];
     
-    tfs.forEach(tf => {
-        const target = missions[tf];
-        if (target && Math.abs(p - target) > (p * 0.003)) { // Threshold bahaya 0.3%
-            if ((p > target && k.c < k.o) || (p < target && k.c > k.o)) {
-                alerts.push({ tf: tf, target: target, dir: p > target ? 'SELL' : 'BUY' });
+    let bad = false;
+    [d1, h1, m30].forEach(m => { if(m && Math.abs(p-m) > (p*0.015) && ((p>m && k.c<k.o)||(p<m && k.c>k.o))) bad = true; });
+    banner.style.display = bad ? 'block' : 'none';
+
+    const target = missions[tf];
+    if(target && tf.includes('m')) {
+        if(Math.abs(p-target)/p > 0.008 && ((p>target && k.c<k.o)||(p<target && k.c>k.o))) {
+            const n = document.getElementById('hajar-notif');
+            if(n.style.display !== 'block') {
+                document.getElementById('h-tf').innerText = `HAJAR ${tf.toUpperCase()}!`;
+                document.getElementById('h-info').innerText = p > target ? `IDEAL SELL -> TARGET ${target.toFixed(2)}` : `IDEAL BUY -> TARGET ${target.toFixed(2)}`;
+                n.style.display = 'block';
+                beep();
+                takeScreenshot(tf.toUpperCase()); // Auto Screenshot saat HAJAR muncul
             }
         }
-    });
-
-    if (alerts.length > 0 && document.getElementById('whale-modal').style.display !== 'flex') {
-        const primary = alerts[alerts.length - 1]; // Ambil TF terbesar
-        const modal = document.getElementById('whale-modal');
-        document.getElementById('whale-command').innerHTML = `${primary.dir} NOW! (TF ${primary.tf.toUpperCase()})`;
-        document.getElementById('whale-details').innerHTML = alerts.map(a => `TARGET ${a.tf.toUpperCase()}: ${a.target.toFixed(2)}`).join('<br>');
-        modal.style.display = 'flex';
-        document.body.classList.add('is-flashing');
-        playSiren();
     }
 }
 
-function updateUI(pos, p, k) {
-    const tf = document.getElementById(pos === 'top' ? 'tf-top' : 'tf-bottom').value;
-    const target = missions[tf] || p;
-    const now = Math.floor(Date.now()/1000);
-
-    if (pos === 'bottom') checkWhaleDanger(p, k);
-
-    for (let mTF in colors) { 
-        if(missions[mTF]) charts[pos].lines[mTF].setData([{time: now-50000, value: missions[mTF]}, {time: now+50000, value: missions[mTF]}]); 
-    }
-
-    const notif = document.getElementById(pos === 'top' ? 'notif-top' : 'notif-bottom');
-    notif.className = "status-overlay";
-    notif.style.background = p < target ? "rgba(0,180,0,0.9)" : "rgba(180,0,0,0.9)";
-    notif.innerHTML = `MOBI: ${p < target ? 'UP' : 'DOWN'}<br>GOAL ${tf.toUpperCase()}: ${target.toFixed(2)}`;
-    notif.style.display = "block";
-}
-
-async function start(pos) {
+async function load(pos) {
     const sym = document.getElementById('symbol').value;
-    const tf = document.getElementById(pos === 'top' ? 'tf-top' : 'tf-bottom').value;
-    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=200`);
+    const tf = document.getElementById(pos === 'top' ? 'sel-top' : 'sel-bottom').value;
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=120`);
     const d = await r.json();
     charts[pos].s.setData(d.map(k => ({ time: k[0]/1000, open: +k[1], high: +k[2], low: +k[3], close: +k[4] })));
-    if (websocks[pos]) websocks[pos].close();
-    websocks[pos] = new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${tf}`);
-    websocks[pos].onmessage = e => { const k = JSON.parse(e.data).k; charts[pos].s.update({ time: k.t/1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c }); updateUI(pos, +k.c, k); };
+    
+    if(webs[pos]) webs[pos].close();
+    webs[pos] = new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${tf}`);
+    webs[pos].onmessage = e => {
+        const k = JSON.parse(e.data).k; const p = parseFloat(k.c);
+        charts[pos].s.update({ time: k.t/1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c });
+        const now = Math.floor(Date.now()/1000);
+        for(let m in mCols) {
+            if(missions[m]) charts[pos].lines[m].setData([{time: now-100000, value: missions[m]}, {time: now+100000, value: missions[m]}]);
+        }
+        check(p, k, tf);
+    };
 }
 
-document.getElementById('btnConnect').onclick = async () => { await syncAll(); start('top'); start('bottom'); };
-document.getElementById('tf-top').onchange = () => start('top');
-document.getElementById('tf-bottom').onchange = () => start('bottom');
+function changeTF(pos) { load(pos); }
+
+function initApp() {
+    if(!charts.top) charts.top = createC('canvas-top');
+    if(!charts.bottom) charts.bottom = createC('canvas-bottom');
+    syncM().then(() => { load('top'); load('bottom'); });
+    setInterval(() => { if(rSec > 0) rSec--; else syncM(); document.getElementById('timer').innerText = `REFRESH: ${Math.floor(rSec/60)}:${(rSec%60).toString().padStart(2,'0')}`; }, 1000);
+}
 </script>
 </body>
 </html>

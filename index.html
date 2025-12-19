@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V40.1 - MARKET BLUEPRINT (FULL TF UNLOCKED)</title>
+    <title>V40.3 - COMMANDER MODE (FULL TF UNLOCKED)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -11,61 +11,56 @@
         body { margin: 0; background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
         #header { padding: 5px; background: #111; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; border-bottom: 2px solid #333; }
         select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; font-size: 12px; cursor: pointer; width: 100%; }
-        #warning-banner { background: #600; color: #fff; padding: 5px; text-align: center; font-weight: 900; font-size: 11px; display: none; z-index: 2000; border-bottom: 1px solid red; animation: blink 1s infinite; }
+        #warning-banner { background: #600; color: #fff; padding: 5px; text-align: center; font-weight: 900; font-size: 11px; display: none; z-index: 2000; animation: blink 1s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .chart-container { display: flex; flex-direction: column; height: 100vh; }
-        .chart-box { flex: 1; position: relative; border-bottom: 1px solid #222; }
+        .chart-box { position: relative; height: 45vh; border-bottom: 1px solid #222; }
         .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; background: rgba(0,0,0,0.8); padding: 3px; border: 1px solid #444; border-radius: 4px; }
-        .tf-bar select { padding: 2px; font-size: 10px; width: 80px; border: 1px solid #0f0; }
+        .tf-bar select { width: 85px; font-size: 11px; padding: 2px; }
         #side-panel { position: absolute; top: 90px; right: 5px; z-index: 50; background: rgba(0,0,0,0.9); border: 1px solid #f0f; padding: 8px; font-size: 10px; color: #0f0; pointer-events: none; border-radius: 5px; }
-        #hajar-notif { display: none; position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 280px; background: rgba(255,0,0,0.95); padding: 15px; z-index: 9999; text-align: center; border: 3px solid yellow; border-radius: 10px; box-shadow: 0 0 20px #f00; }
+        #hajar-notif { display: none; position: fixed; top: 20%; left: 50%; transform: translateX(-50%); width: 320px; background: rgba(10, 0, 0, 0.98); padding: 20px; z-index: 9999; text-align: center; border: 4px solid #f00; border-radius: 12px; box-shadow: 0 0 40px #f00; }
+        .detail-box { text-align: left; background: #200; padding: 12px; border-radius: 6px; border: 1px solid #f44; font-size: 13px; margin: 15px 0; }
+        .line { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #400; padding-bottom: 2px; }
+        .val { font-weight: bold; color: #0f0; }
     </style>
 </head>
-<body id="capture-area">
+<body>
 
 <div id="warning-banner">⚠️ DANGER: HIGH TF REJECTION - MONITOR BIG FLOW! ⚠️</div>
 
 <div id="hajar-notif">
-    <h2 id="h-tf" style="margin:0; color:yellow; font-size: 26px;">HAJAR!</h2>
-    <p id="h-info" style="font-weight:900; margin: 10px 0; color: white;"></p>
-    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:bold; width: 100%; padding: 10px; cursor: pointer;">SAYA PAHAM (SCREENSHOT SAVED)</button>
+    <h1 style="color:yellow; margin:0; font-size:32px;">HAJAR!</h1>
+    <div class="detail-box" id="h-content"></div>
+    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:900; width:100%; padding: 15px; border-radius: 8px; cursor: pointer; border:none;">SAYA PAHAM (CEK HARGA REAL!)</button>
 </div>
 
 <div id="side-panel">
-    <b style="color:#f0f; border-bottom:1px solid #f0f; display:block; margin-bottom: 5px;">MISSION BLUEPRINT</b>
+    <b style="color:#f0f; border-bottom:1px solid #f0f; display:block; margin-bottom:5px;">BLUEPRINT MISI</b>
     <div id="misi-list"></div>
     <div id="timer" style="font-size:8px; color:#666; margin-top:5px;">RE-SCAN: 05:00</div>
 </div>
 
-<div class="chart-container">
+<div class="chart-container" style="display: flex; flex-direction: column; height: 100vh;">
     <div id="header">
-        <select id="symbol">
-            <option value="BTCUSDT">BTC/USDT</option>
-            <option value="ETHUSDT">ETH/USDT</option>
-            <option value="SOLUSDT">SOL/USDT</option>
-            <option value="BNBUSDT">BNB/USDT</option>
-        </select>
-        <button onclick="initApp()">ACTIVATE V40.1 FULL TF</button>
+        <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="SOLUSDT">SOL/USDT</option></select>
+        <button onclick="initApp()">ACTIVATE COMMANDER V40.3</button>
     </div>
     
-    <div class="chart-box">
+    <div id="canvas-top" class="chart-box">
         <div class="tf-bar">
-            <select id="sel-top" onchange="changeTF('top')">
+            <select id="sel-top" onchange="load('top')">
                 <option value="1m">M1</option><option value="5m">M5</option><option value="15m">M15</option>
                 <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d" selected>D1</option>
             </select>
         </div>
-        <div id="canvas-top" style="height:100%"></div>
     </div>
 
-    <div class="chart-box">
+    <div id="canvas-bottom" class="chart-box">
         <div class="tf-bar">
-            <select id="sel-bottom" onchange="changeTF('bottom')">
+            <select id="sel-bottom" onchange="load('bottom')">
                 <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option>
                 <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option>
             </select>
         </div>
-        <div id="canvas-bottom" style="height:100%"></div>
     </div>
 </div>
 
@@ -73,102 +68,82 @@
 let missions = {}, charts = {}, webs = {}, rSec = 300;
 const mCols = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff' };
 
-function takeScreenshot(tf) {
-    html2canvas(document.body).then(canvas => {
-        let link = document.createElement('a');
-        link.download = `V40_HAJAR_${tf}_${Date.now()}.png`;
-        link.href = canvas.toDataURL();
-        link.click();
-    });
-}
-
 async function calculateMission(sym, tf) {
     try {
         const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`);
         const d = await r.json();
-        const prev = d[d.length - 2];
+        const prev = d[d.length-2];
         const pO = +prev[1], pH = +prev[2], pL = +prev[3], pC = +prev[4];
-
-        let target;
-        if (pC > pO) { target = (pC - pL) > (pH - pC) ? pL : pH; } 
-        else { target = (pO - pL) < (pH - pO) ? pH : pL; }
-        return target;
+        return pC > pO ? pL : pH; // Syarat High Accuracy: Ambil ekor lawan sebagai magnet
     } catch(e) { return null; }
 }
 
-async function syncMissions() {
+async function sync() {
     const sym = document.getElementById('symbol').value;
     const list = document.getElementById('misi-list'); list.innerHTML = '';
-    const tfs = ['1m', '5m', '15m', '30m', '1h', '4h', '1d'];
-    
+    const tfs = ['1m','5m','15m','30m','1h','4h','1d'];
     for (let tf of tfs) {
         const val = await calculateMission(sym, tf);
-        if (val) {
-            missions[tf] = val;
-            if(mCols[tf]) list.innerHTML += `<div style="color:${mCols[tf]}">${tf.toUpperCase()}: ${val.toFixed(2)}</div>`;
-        }
+        if(val) { missions[tf] = val; if(mCols[tf]) list.innerHTML += `<div style="color:${mCols[tf]}">${tf.toUpperCase()}: ${val.toFixed(2)}</div>`; }
     }
     rSec = 300;
 }
 
-function checkLogic(p, k, tf) {
-    const d1 = missions['1d'], h1 = missions['1h'];
-    const banner = document.getElementById('warning-banner');
-    if(d1 && ((p > d1 && k.c < k.o) || (p < d1 && k.c > k.o))) { banner.style.display = 'block'; } else { banner.style.display = 'none'; }
-
+function check(p, k, tf) {
     const target = missions[tf];
     if(target && tf.includes('m')) {
-        const dist = Math.abs(p - target) / p;
-        if(dist < 0.003 && ((p > target && k.c < k.o) || (p < target && k.c > k.o))) {
+        const diff = Math.abs(p - target) / p;
+        if(diff < 0.002 && ((p > target && k.c < k.o) || (p < target && k.c > k.o))) {
             const n = document.getElementById('hajar-notif');
             if(n.style.display !== 'block') {
-                document.getElementById('h-info').innerText = p > target ? `REJECT SUPPLY: SELL` : `REJECT DEMAND: BUY`;
+                const side = p > target ? "SELL (SUPPLY REJECT)" : "BUY (DEMAND REJECT)";
+                const tp = missions['15m'] || missions['1h'] || "FOLLOW BLUEPRINT";
+                document.getElementById('h-content').innerHTML = `
+                    <div class="line"><span>TF Sinyal:</span><span class="val">${tf.toUpperCase()}</span></div>
+                    <div class="line"><span>Aksi:</span><span class="val" style="color:#ff4444">${side}</span></div>
+                    <div class="line"><span>Entry Ideal:</span><span class="val">${p.toFixed(2)}</span></div>
+                    <div class="line"><span>Target TP:</span><span class="val" style="color:yellow">${tp}</span></div>
+                `;
                 n.style.display = 'block';
                 new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
-                takeScreenshot(tf.toUpperCase());
+                html2canvas(document.body).then(canvas => { let l = document.createElement('a'); l.download=`HAJAR_${tf}.png`; l.href=canvas.toDataURL(); l.click(); });
             }
         }
     }
 }
 
-async function loadChart(pos) {
+async function load(pos) {
     const sym = document.getElementById('symbol').value;
     const tf = document.getElementById(pos === 'top' ? 'sel-top' : 'sel-bottom').value;
     const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=120`);
     const d = await r.json();
     charts[pos].s.setData(d.map(k => ({ time: k[0]/1000, open: +k[1], high: +k[2], low: +k[3], close: +k[4] })));
-    
     if(webs[pos]) webs[pos].close();
     webs[pos] = new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${tf}`);
     webs[pos].onmessage = e => {
         const k = JSON.parse(e.data).k; const p = parseFloat(k.c);
         charts[pos].s.update({ time: k.t/1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c });
         for(let m in mCols) { if(missions[m] && Math.abs(p - missions[m]) < (p * 0.0001)) { setTimeout(() => { missions[m] = null; }, 3600000); } }
-        checkLogic(p, k, tf);
+        check(p, k, tf);
         const now = Math.floor(Date.now()/1000);
         for(let m in mCols) if(missions[m]) charts[pos].lines[m].setData([{time: now-100000, value: missions[m]}, {time: now+100000, value: missions[m]}]);
     };
 }
 
+function initApp() {
+    charts.top = charts.top || createC('canvas-top');
+    charts.bottom = charts.bottom || createC('canvas-bottom');
+    sync().then(() => { load('top'); load('bottom'); });
+}
+
 function createC(id) {
-    const c = LightweightCharts.createChart(document.getElementById(id), { 
-        layout: { background: { color: '#000' }, textColor: '#ccc' },
-        grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
-        timeScale: { timeVisible: true, borderVisible: false }
-    });
+    const c = LightweightCharts.createChart(document.getElementById(id), { layout: { background: { color: '#000' }, textColor: '#ccc' }, grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } } });
     const s = c.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
     const lines = {};
     for (let tf in mCols) lines[tf] = c.addLineSeries({ color: mCols[tf], lineWidth: 2, priceLineVisible: false });
     return { c, s, lines };
 }
-
-function changeTF(pos) { loadChart(pos); }
-function initApp() {
-    charts.top = charts.top || createC('canvas-top');
-    charts.bottom = charts.bottom || createC('canvas-bottom');
-    syncMissions().then(() => { loadChart('top'); loadChart('bottom'); });
-}
-setInterval(() => { if(rSec > 0) rSec--; else syncMissions(); document.getElementById('timer').innerText = `RE-SCAN: ${Math.floor(rSec/60)}:${(rSec%60).toString().padStart(2,'0')}`; }, 1000);
+setInterval(() => { if(rSec > 0) rSec--; else sync(); document.getElementById('timer').innerText = `RE-SCAN: ${Math.floor(rSec/60)}:${(rSec%60).toString().padStart(2,'0')}`; }, 1000);
 </script>
 </body>
 </html>

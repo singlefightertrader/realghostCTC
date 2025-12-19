@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V34.6 - SNIPER PREDATOR (ONE SHOOT ONE KILL)</title>
+    <title>V34.7 - SNIPER PREDATOR + HISTORICAL LOG</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -17,27 +17,25 @@
         .BUY-ALERT { background: #00ff00; color: #000; box-shadow: 0 0 30px #00ff00; }
         .SELL-ALERT { background: #ff0000; color: #fff; box-shadow: 0 0 30px #ff0000; }
         .WAIT-ALERT { background: #333; color: #ff0; border-color: #ff0; }
-        @keyframes pulse-red { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
-        .tp-active { animation: pulse-red 0.3s infinite; font-size: 20px; text-shadow: 0 0 10px #fff; }
-        .misi-info { position: absolute; bottom: 5px; right: 5px; z-index: 10; background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #444; font-size: 9px; line-height: 1.1; max-height: 150px; overflow-y: auto; }
+        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        .tp-active { animation: pulse-red 0.3s infinite; font-size: 20px; }
+        .misi-info { position: absolute; bottom: 5px; right: 5px; z-index: 10; background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #444; font-size: 9px; line-height: 1.1; max-height: 120px; overflow-y: auto; }
         .tf-ctrl-box { position: absolute; top: 5px; left: 5px; z-index: 10; display: flex; gap: 5px; background: rgba(0,0,0,0.6); padding: 2px; border: 1px solid #444; }
+        /* STYLE TOMBOL LOG */
+        #btnDownload { position: absolute; bottom: 10px; left: 10px; z-index: 1000; border-color: #ffaa00; color: #ffaa00; font-size: 10px; }
     </style>
 </head>
 <body>
 <div class="container">
     <div id="header">
         <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
-        <button id="btnConnect">ACTIVATE SNIPER ENGINE V34.6</button>
+        <button id="btnConnect">START SNIPER ENGINE V34.7</button>
     </div>
     <div class="view-area">
         <div class="chart-container" id="box-top">
             <div id="notif-top" class="status-overlay" style="display:none"></div>
             <div class="tf-ctrl-box">
-                <select id="tf-top" class="tf-selector">
-                    <option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option>
-                    <option value="30m">M30</option><option value="15m" selected>M15</option>
-                    <option value="5m">M5</option><option value="1m">M1</option>
-                </select>
+                <select id="tf-top"><option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option><option value="30m">M30</option><option value="15m" selected>M15</option><option value="5m">M5</option><option value="1m">M1</option></select>
             </div>
             <div id="canvas-top" style="height:100%"></div>
             <div class="misi-info" id="misi-top"></div>
@@ -45,14 +43,11 @@
         <div class="chart-container" id="box-bottom">
             <div id="notif-bottom" class="status-overlay" style="display:none"></div>
             <div class="tf-ctrl-box">
-                <select id="tf-bottom" class="tf-selector">
-                    <option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option>
-                    <option value="30m">M30</option><option value="15m">M15</option>
-                    <option value="5m">M5</option><option value="1m" selected>M1</option>
-                </select>
+                <select id="tf-bottom"><option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option><option value="30m">M30</option><option value="15m">M15</option><option value="5m">M5</option><option value="1m" selected>M1</option></select>
             </div>
             <div id="canvas-bottom" style="height:100%"></div>
             <div class="misi-info" id="misi-bottom"></div>
+            <button id="btnDownload">DOWNLOAD ENTRY LOG (0)</button>
         </div>
     </div>
 </div>
@@ -60,6 +55,7 @@
 
 <script>
 let missions = {}, snr = {}, charts = {}, websocks = {}, lock = { top: false, bottom: false };
+let entryHistory = []; // Wadah history
 const colors = { '1d': '#ff8c00', '4h': '#808080', '1h': '#f0f', '30m': '#0ff', '15m': '#ff0', '5m': '#0f0', '1m': '#fff' };
 const bgm = document.getElementById('bgm');
 
@@ -100,9 +96,15 @@ async function syncAll(symbol) {
     }
     ['top', 'bottom'].forEach(p => {
         const el = document.getElementById(`misi-${p}`);
-        el.innerHTML = "<b>SNIPER TARGETS:</b>";
+        el.innerHTML = "<b>MISSIONS:</b>";
         for (let tf in colors) { if(missions[tf]) el.innerHTML += `<div style="color:${colors[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`; }
     });
+}
+
+function saveLog(action, price, target, tf) {
+    const time = new Date().toLocaleString('id-ID');
+    entryHistory.push({ Time: time, Action: action, TF: tf, Entry: price, Target_TP: target });
+    document.getElementById('btnDownload').innerText = `DOWNLOAD ENTRY LOG (${entryHistory.length})`;
 }
 
 function updateUI(pos, p, tf, k) {
@@ -115,18 +117,20 @@ function updateUI(pos, p, tf, k) {
     if (k.x) lock[pos] = false; 
     if (lock[pos]) return;
 
-    // SNIPER LOGIC: Deteksi Golden Momentum (Jarak 0.12% untuk agresivitas Sniper)
     const gap = p * 0.0012; 
     const isBuyZone = p < target && Math.abs(p - s.s) < gap;
     const isSellZone = p > target && Math.abs(p - s.r) < gap;
 
     if (isBuyZone || isSellZone) {
         lock[pos] = true;
-        c.lines[tf].applyOptions({ color: '#ff0000', lineWidth: 5, lineStyle: 2 }); // Kill Zone Line
-
+        c.lines[tf].applyOptions({ color: '#ff0000', lineWidth: 5, lineStyle: 2 });
         const action = isBuyZone ? 'BUY' : 'SELL';
+        
+        // CATAT LOG SAAT PERINTAH MUNCUL
+        saveLog(action, p, target, tf);
+
         notif.className = `status-overlay ${action}-ALERT`;
-        notif.innerHTML = `<span class="tp-active">GOLDEN MOMENTUM! SHOOT ${action}!</span><br>MISI: ${target.toFixed(2)}`;
+        notif.innerHTML = `<span class="tp-active">GOLDEN MOMENTUM! ${action}!</span><br>MISI: ${target.toFixed(2)}`;
         notif.style.display = "block";
     } else {
         c.lines[tf].applyOptions({ color: colors[tf], lineWidth: 1, lineStyle: 0 });
@@ -136,6 +140,22 @@ function updateUI(pos, p, tf, k) {
     }
     if (Math.abs(p - target) < (p * 0.0001)) syncAll(document.getElementById('symbol').value);
 }
+
+// FUNGSI DOWNLOAD
+document.getElementById('btnDownload').onclick = () => {
+    if (entryHistory.length === 0) return alert("Belum ada tembakan Sniper!");
+    let csv = "Time,Action,TimeFrame,EntryPrice,TargetTP\n";
+    entryHistory.forEach(row => { csv += `${row.Time},${row.Action},${row.TF},${row.Entry},${row.Target_TP}\n`; });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('hidden', '');
+    a.setAttribute('href', url);
+    a.setAttribute('download', `Sniper_Log_${Date.now()}.csv`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+};
 
 async function start(pos) {
     const sym = document.getElementById('symbol').value;
@@ -152,10 +172,7 @@ async function start(pos) {
     };
 }
 
-document.getElementById('btnConnect').onclick = async () => { 
-    startBGM(); await syncAll(document.getElementById('symbol').value); 
-    start('top'); start('bottom'); 
-};
+document.getElementById('btnConnect').onclick = async () => { startBGM(); await syncAll(document.getElementById('symbol').value); start('top'); start('bottom'); };
 document.getElementById('tf-top').onchange = () => start('top');
 document.getElementById('tf-bottom').onchange = () => start('bottom');
 </script>

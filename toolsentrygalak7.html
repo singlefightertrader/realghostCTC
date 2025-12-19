@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <title>V34.5 - ULTIMATE PREDATOR (ALL TF + PRECISION)</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+        .container { display: flex; flex-direction: column; height: 100vh; }
+        #header { padding: 5px 10px; background: #111; display: grid; grid-template-columns: 2fr 1fr; gap: 10px; border-bottom: 2px solid #333; }
+        select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 11px; }
+        .view-area { flex: 1; display: flex; flex-direction: column; position: relative; }
+        .chart-container { flex: 1; position: relative; border-bottom: 1px solid #222; }
+        
+        /* NOTIFIKASI SYSTEM */
+        .status-overlay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 100; padding: 12px 25px; border-radius: 4px; font-weight: 900; font-size: 14px; text-align: center; min-width: 360px; border: 4px solid #fff; pointer-events: none; }
+        .BUY-ALERT { background: #00ff00; color: #000; box-shadow: 0 0 30px #00ff00; }
+        .SELL-ALERT { background: #ff0000; color: #fff; box-shadow: 0 0 30px #ff0000; }
+        .DANGER-ALERT { background: #ffaa00; color: #000; border-color: #f00; box-shadow: 0 0 40px #f00; animation: blink 0.5s infinite; }
+        .WAIT-ALERT { background: #333; color: #ff0; border-color: #ff0; }
+        
+        /* ANIMASI KEDIP TP */
+        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
+        .tp-active { animation: pulse-red 0.4s infinite; font-size: 18px; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .misi-info { position: absolute; bottom: 5px; right: 5px; z-index: 10; background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #444; font-size: 9px; line-height: 1.1; max-height: 150px; overflow-y: auto; }
+        .tf-ctrl-box { position: absolute; top: 5px; left: 5px; z-index: 10; display: flex; gap: 5px; background: rgba(0,0,0,0.6); padding: 2px; border: 1px solid #444; }
+        .ghost-status { position: absolute; top: 50px; right: 10px; font-size: 9px; color: #0f0; text-align: right; background: rgba(0,0,0,0.7); padding: 5px; border: 1px solid #222; z-index: 10; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div id="header">
+        <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
+        <button id="btnConnect">START ALL-TF ENGINE V34.5</button>
+    </div>
+    <div class="view-area">
+        <div class="chart-container" id="box-top">
+            <div id="notif-top" class="status-overlay" style="display:none"></div>
+            <div class="tf-ctrl-box">
+                <select id="tf-top" class="tf-selector">
+                    <option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option>
+                    <option value="30m">M30</option><option value="15m" selected>M15</option>
+                    <option value="5m">M5</option><option value="1m">M1</option>
+                </select>
+            </div>
+            <div id="canvas-top" style="height:100%"></div>
+            <div class="misi-info" id="misi-top"></div>
+        </div>
+        <div class="chart-container" id="box-bottom">
+            <div id="notif-bottom" class="status-overlay" style="display:none"></div>
+            <div class="ghost-status" id="ghost-log">GHOST: STANDBY</div>
+            <div class="tf-ctrl-box">
+                <select id="tf-bottom" class="tf-selector">
+                    <option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option>
+                    <option value="30m">M30</option><option value="15m">M15</option>
+                    <option value="5m">M5</option><option value="1m" selected>M1</option>
+                </select>
+            </div>
+            <div id="canvas-bottom" style="height:100%"></div>
+            <div class="misi-info" id="misi-bottom"></div>
+        </div>
+    </div>
+</div>
+
+<audio id="bgm" loop preload="auto"><source src="bgm.mp3" type="audio/mpeg"></audio>
+
+<script>
+let missions = {}, snr = {}, charts = {}, websocks = {};
+let lock = { top: false, bottom: false };
+const colors = { '1d': '#ff8c00', '4h': '#808080', '1h': '#f0f', '30m': '#0ff', '15m': '#ff0', '5m': '#0f0', '1m': '#fff' };
+const bgm = document.getElementById('bgm');
+
+function startBGM() {
+    bgm.volume = 0; bgm.muted = false;
+    bgm.play().then(() => {
+        let v = 0; const iv = setInterval(() => { v += 0.01; if (v >= 0.15) { v = 0.15; clearInterval(iv); } bgm.volume = v; }, 100);
+    }).catch(e => console.log("BGM Blocked"));
+}
+
+function createChart(id) {
+    const c = LightweightCharts.createChart(document.getElementById(id), {
+        layout: { background: { color: '#000' }, textColor: '#ccc' },
+        grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } },
+        timeScale: { timeVisible: true }
+    });
+    const s = c.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
+    const lines = {};
+    for (let tf in colors) { lines[tf] = c.addLineSeries({ color: colors[tf], lineWidth: 1, priceLineVisible: false }); }
+    return { c, s, lines };
+}
+
+charts.top = createChart('canvas-top');
+charts.bottom = createChart('canvas-bottom');
+
+async function syncAll(symbol) {
+    for (let tf in colors) {
+        try {
+            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=250`);
+            const d = await r.json();
+            const last = parseFloat(d[d.length-1][4]);
+            let hi = [], lo = [], deals = [];
+            d.forEach(k => { hi.push(+k[2]); lo.push(+k[3]); deals.push(+k[1]); });
+            snr[tf] = { r: Math.max(...hi), s: Math.min(...lo) };
+            let untouched = deals.filter(p => Math.abs(p - last) > (last * 0.00012)).sort((a,b) => Math.abs(a-last) - Math.abs(b-last));
+            missions[tf] = untouched[0] || last;
+        } catch(e) {}
+    }
+    ['top', 'bottom'].forEach(p => {
+        const el = document.getElementById(`misi-${p}`);
+        el.innerHTML = "<b>MISSIONS:</b>";
+        for (let tf in colors) { if(missions[tf]) el.innerHTML += `<div style="color:${colors[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`; }
+    });
+}
+
+function updateUI(pos, p, tf, k) {
+    const notif = document.getElementById(pos === 'top' ? 'notif-top' : 'notif-bottom');
+    const target = missions[tf], s = snr[tf], c = charts[pos], now = Math.floor(Date.now()/1000);
+    if(!target || !s) return;
+
+    for (let mTF in colors) { if(missions[mTF]) c.lines[mTF].setData([{time: now-100000, value: missions[mTF]}, {time: now+100000, value: missions[mTF]}]); }
+
+    const isBreakout = p > s.r + (p * 0.001) || p < s.s - (p * 0.001);
+    if (isBreakout) {
+        notif.className = "status-overlay DANGER-ALERT";
+        notif.innerHTML = `BREAKOUT ${tf.toUpperCase()}!<br>AWAS MC! JANGAN ENTRY!`;
+        notif.style.display = "block"; return;
+    }
+
+    if (k.x) lock[pos] = false; 
+    if (lock[pos]) return;
+
+    // AKURASI MOMENTUM (0.08% GAP)
+    const isBuyZone = p < target && Math.abs(p - s.s) < (p * 0.0008);
+    const isSellZone = p > target && Math.abs(p - s.r) < (p * 0.0008);
+
+    if (isBuyZone || isSellZone) {
+        lock[pos] = true;
+        c.lines[tf].applyOptions({ color: '#ff0000', lineWidth: 4, lineStyle: 2 }); // Garis TP Kedip Merah
+
+        setTimeout(() => {
+            const signature = Math.floor(Math.random() * 3);
+            let trigger = (signature === 0) || (signature === 1 && (isBuyZone ? p < +k.o : p > +k.o)) || (signature === 2 && (isBuyZone ? p > +k.l : p < +k.h));
+            if (trigger) {
+                const action = isBuyZone ? 'BUY' : 'SELL';
+                notif.className = `status-overlay ${action}-ALERT`;
+                notif.innerHTML = `<span class="tp-active">HAQQUL YAKIN! HAJAR ${action}!</span><br>TARGET TP: ${target.toFixed(2)}`;
+            } else { lock[pos] = false; }
+        }, Math.floor(Math.random() * 850));
+    } else {
+        c.lines[tf].applyOptions({ color: colors[tf], lineWidth: 1, lineStyle: 0 });
+        notif.className = "status-overlay WAIT-ALERT";
+        notif.innerHTML = `SABAR.. TUNGGU ZONA AKURAT.<br>TARGET: ${target.toFixed(2)}`;
+        notif.style.display = "block";
+    }
+    if (Math.abs(p - target) < (p * 0.0001)) syncAll(document.getElementById('symbol').value);
+}
+
+async function start(pos) {
+    const sym = document.getElementById('symbol').value;
+    const tf = document.getElementById(pos === 'top' ? 'tf-top' : 'tf-bottom').value;
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=150`);
+    const d = await r.json();
+    charts[pos].s.setData(d.map(k => ({ time: k[0]/1000, open: +k[1], high: +k[2], low: +k[3], close: +k[4] })));
+    if (websocks[pos]) websocks[pos].close();
+    websocks[pos] = new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${tf}`);
+    websocks[pos].onmessage = e => {
+        const k = JSON.parse(e.data).k;
+        charts[pos].s.update({ time: k.t/1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c });
+        updateUI(pos, +k.c, tf, k);
+    };
+}
+
+document.getElementById('btnConnect').onclick = async () => { 
+    startBGM(); await syncAll(document.getElementById('symbol').value); 
+    start('top'); start('bottom'); 
+};
+document.getElementById('tf-top').onchange = () => start('top');
+document.getElementById('tf-bottom').onchange = () => start('bottom');
+</script>
+</body>
+</html>

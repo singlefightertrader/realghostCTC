@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V40.0 - MARKET BLUEPRINT (HIGH ACCURACY)</title>
+    <title>V40.1 - MARKET BLUEPRINT (FULL TF UNLOCKED)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -16,7 +16,7 @@
         .chart-container { display: flex; flex-direction: column; height: 100vh; }
         .chart-box { flex: 1; position: relative; border-bottom: 1px solid #222; }
         .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; background: rgba(0,0,0,0.8); padding: 3px; border: 1px solid #444; border-radius: 4px; }
-        .tf-bar select { padding: 2px; font-size: 10px; width: 65px; border: 1px solid #0f0; }
+        .tf-bar select { padding: 2px; font-size: 10px; width: 80px; border: 1px solid #0f0; }
         #side-panel { position: absolute; top: 90px; right: 5px; z-index: 50; background: rgba(0,0,0,0.9); border: 1px solid #f0f; padding: 8px; font-size: 10px; color: #0f0; pointer-events: none; border-radius: 5px; }
         #hajar-notif { display: none; position: fixed; top: 30%; left: 50%; transform: translateX(-50%); width: 280px; background: rgba(255,0,0,0.95); padding: 15px; z-index: 9999; text-align: center; border: 3px solid yellow; border-radius: 10px; box-shadow: 0 0 20px #f00; }
     </style>
@@ -43,14 +43,16 @@
             <option value="BTCUSDT">BTC/USDT</option>
             <option value="ETHUSDT">ETH/USDT</option>
             <option value="SOLUSDT">SOL/USDT</option>
+            <option value="BNBUSDT">BNB/USDT</option>
         </select>
-        <button onclick="initApp()">ACTIVATE BLUEPRINT V40.0</button>
+        <button onclick="initApp()">ACTIVATE V40.1 FULL TF</button>
     </div>
     
     <div class="chart-box">
         <div class="tf-bar">
             <select id="sel-top" onchange="changeTF('top')">
-                <option value="1h">H1</option><option value="4h">H4</option><option value="1d" selected>D1</option>
+                <option value="1m">M1</option><option value="5m">M5</option><option value="15m">M15</option>
+                <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d" selected>D1</option>
             </select>
         </div>
         <div id="canvas-top" style="height:100%"></div>
@@ -59,7 +61,8 @@
     <div class="chart-box">
         <div class="tf-bar">
             <select id="sel-bottom" onchange="changeTF('bottom')">
-                <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option><option value="30m">M30</option>
+                <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option>
+                <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option>
             </select>
         </div>
         <div id="canvas-bottom" style="height:100%"></div>
@@ -79,7 +82,6 @@ function takeScreenshot(tf) {
     });
 }
 
-// HIGH ACCURACY ENGINE: DECODE BLUEPRINT MARKET
 async function calculateMission(sym, tf) {
     try {
         const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`);
@@ -87,14 +89,9 @@ async function calculateMission(sym, tf) {
         const prev = d[d.length - 2];
         const pO = +prev[1], pH = +prev[2], pL = +prev[3], pC = +prev[4];
 
-        // LOGIC HIDDEN MISSION: Berdasarkan OHLC & Wick Story
-        // Mencari area yang "diciptakan" tapi ditinggalkan (SnD Zone)
         let target;
-        if (pC > pO) { // Bullish sebelumnya: Mencari Rejection Wick bawah atau High Break
-            target = (pC - pL) > (pH - pC) ? pL : pH;
-        } else { // Bearish sebelumnya: Mencari Rejection Wick atas atau Low Break
-            target = (pO - pL) < (pH - pO) ? pH : pL;
-        }
+        if (pC > pO) { target = (pC - pL) > (pH - pC) ? pL : pH; } 
+        else { target = (pO - pL) < (pH - pO) ? pH : pL; }
         return target;
     } catch(e) { return null; }
 }
@@ -117,20 +114,15 @@ async function syncMissions() {
 function checkLogic(p, k, tf) {
     const d1 = missions['1d'], h1 = missions['1h'];
     const banner = document.getElementById('warning-banner');
+    if(d1 && ((p > d1 && k.c < k.o) || (p < d1 && k.c > k.o))) { banner.style.display = 'block'; } else { banner.style.display = 'none'; }
 
-    // Guardian: Rejection SnR di TF Gede (M30 - D1)
-    if(d1 && ((p > d1 && k.c < k.o) || (p < d1 && k.c > k.o))) {
-        banner.style.display = 'block';
-    } else { banner.style.display = 'none'; }
-
-    // HAJAR: Ideal Entry di SnD Blueprint
     const target = missions[tf];
     if(target && tf.includes('m')) {
         const dist = Math.abs(p - target) / p;
         if(dist < 0.003 && ((p > target && k.c < k.o) || (p < target && k.c > k.o))) {
             const n = document.getElementById('hajar-notif');
             if(n.style.display !== 'block') {
-                document.getElementById('h-info').innerText = p > target ? `REJECT SUPPLY: IDEAL SELL` : `REJECT DEMAND: IDEAL BUY`;
+                document.getElementById('h-info').innerText = p > target ? `REJECT SUPPLY: SELL` : `REJECT DEMAND: BUY`;
                 n.style.display = 'block';
                 new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
                 takeScreenshot(tf.toUpperCase());
@@ -151,14 +143,7 @@ async function loadChart(pos) {
     webs[pos].onmessage = e => {
         const k = JSON.parse(e.data).k; const p = parseFloat(k.c);
         charts[pos].s.update({ time: k.t/1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c });
-        
-        // Auto-Delete Mission if Achieved (1h Cleanup)
-        for(let m in mCols) {
-            if(missions[m] && Math.abs(p - missions[m]) < (p * 0.0001)) {
-                setTimeout(() => { missions[m] = null; }, 3600000);
-            }
-        }
-        
+        for(let m in mCols) { if(missions[m] && Math.abs(p - missions[m]) < (p * 0.0001)) { setTimeout(() => { missions[m] = null; }, 3600000); } }
         checkLogic(p, k, tf);
         const now = Math.floor(Date.now()/1000);
         for(let m in mCols) if(missions[m]) charts[pos].lines[m].setData([{time: now-100000, value: missions[m]}, {time: now+100000, value: missions[m]}]);

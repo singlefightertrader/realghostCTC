@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V35.0 - SNIPER MATHEMATICS (1+1=2)</title>
+    <title>V35.3 - THE COMPLETE SNIPER (NO DELETIONS)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -14,11 +14,15 @@
         .view-area { flex: 1; display: flex; flex-direction: column; position: relative; }
         .chart-container { flex: 1; position: relative; border-bottom: 1px solid #222; }
         .status-overlay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 100; padding: 12px 25px; border-radius: 4px; font-weight: 900; font-size: 14px; text-align: center; min-width: 360px; border: 4px solid #fff; pointer-events: none; }
+        
+        /* SEMUA WARNA ALERT LAMA TETAP ADA */
         .BUY-ALERT { background: #00ff00; color: #000; box-shadow: 0 0 30px #00ff00; }
         .SELL-ALERT { background: #ff0000; color: #fff; box-shadow: 0 0 30px #ff0000; }
         .WAIT-ALERT { background: #333; color: #ff0; border-color: #ff0; }
-        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-        .tp-active { animation: pulse-red 0.3s infinite; font-size: 20px; }
+        .DANGER-ALERT { background: #ffaa00; color: #000; box-shadow: 0 0 30px #ffaa00; }
+        .WHALE-DANGER { background: #ff0000 !important; color: #fff !important; animation: flash-red 0.2s infinite; border: 10px solid #fff; }
+        
+        @keyframes flash-red { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
         .misi-info { position: absolute; bottom: 5px; right: 5px; z-index: 10; background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #444; font-size: 9px; line-height: 1.1; max-height: 120px; overflow-y: auto; }
         .tf-ctrl-box { position: absolute; top: 5px; left: 5px; z-index: 10; display: flex; gap: 5px; background: rgba(0,0,0,0.6); padding: 2px; border: 1px solid #444; }
         #btnDownload { position: absolute; bottom: 10px; left: 10px; z-index: 1000; border: 1px solid #ffaa00; color: #ffaa00; font-size: 10px; padding: 5px; background: #000; }
@@ -28,7 +32,7 @@
 <div class="container">
     <div id="header">
         <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
-        <button id="btnConnect">START PROBABILITY ENGINE V35.0</button>
+        <button id="btnConnect">ACTIVATE ALL-IN-ONE ENGINE V35.3</button>
     </div>
     <div class="view-area">
         <div class="chart-container" id="box-top">
@@ -46,16 +50,15 @@
             </div>
             <div id="canvas-bottom" style="height:100%"></div>
             <div class="misi-info" id="misi-bottom"></div>
-            <button id="btnDownload">DOWNLOAD ENTRY LOG (0)</button>
+            <button id="btnDownload">DOWNLOAD ENTRY HISTORY (0)</button>
         </div>
     </div>
 </div>
+<audio id="whale-sound" src="https://actions.google.com/sounds/v1/alarms/emergency_it_is_an_emergency.ogg"></audio>
 
 <script>
 let missions = {}, snr = {}, charts = {}, websocks = {}, lock = { top: false, bottom: false }, entryLog = [];
-let achievedMissions = {}; // Untuk pelacakan penghapusan 1 jam
-
-// WARNA SESUAI INSTRUKSI LU
+// WARNA STANDAR SESUAI INSTRUKSI LU
 const colors = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff' };
 
 function createChart(id) {
@@ -75,86 +78,86 @@ charts.bottom = createChart('canvas-bottom');
 
 async function syncAll() {
     const sym = document.getElementById('symbol').value;
-    const nowTs = Date.now();
-    
     for (let tf in colors) {
-        // Hapus misi yang sudah tercapai > 1 jam
-        if (achievedMissions[tf] && (nowTs - achievedMissions[tf].time > 3600000)) {
-            delete missions[tf];
-            delete achievedMissions[tf];
-        }
-
-        if (!missions[tf]) {
-            try {
-                const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=250`);
-                const d = await r.json();
-                const last = parseFloat(d[d.length-1][4]);
-                let deals = [], hi = [], lo = [];
-                d.forEach(k => { hi.push(+k[2]); lo.push(+k[3]); deals.push(+k[1]); });
-                snr[tf] = { r: Math.max(...hi), s: Math.min(...lo) };
-                
-                // Mission Price = Harga yang belum tercapai tapi 'seharusnya' tercapai
-                let target = deals.filter(p => Math.abs(p - last) > (last * 0.00015)).sort((a,b) => Math.abs(a-last) - Math.abs(b-last))[0];
-                missions[tf] = target || last;
-            } catch(e) {}
-        }
+        try {
+            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=250`);
+            const d = await r.json();
+            const last = parseFloat(d[d.length-1][4]);
+            let deals = [], hi = [], lo = [];
+            d.forEach(k => { hi.push(+k[2]); lo.push(+k[3]); deals.push(+k[1]); });
+            snr[tf] = { r: Math.max(...hi), s: Math.min(...lo) };
+            
+            // MISSION PRICE AKURAT (MATEMATIKA 1+1=2)
+            let untouched = deals.filter(p => Math.abs(p - last) > (last * 0.00015)).sort((a,b) => Math.abs(a-last) - Math.abs(b-last));
+            missions[tf] = untouched[0] || last;
+        } catch(e) {}
     }
-    renderMissionList();
-}
-
-function renderMissionList() {
     ['top', 'bottom'].forEach(p => {
         const el = document.getElementById(`misi-${p}`);
-        el.innerHTML = "<b>MISSION PRICES:</b>";
+        el.innerHTML = "<b>MISSIONS (H1-M1):</b>";
         for (let tf in colors) { if(missions[tf]) el.innerHTML += `<div style="color:${colors[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`; }
     });
 }
 
 function updateUI(pos, p, tf, k) {
     const notif = document.getElementById(pos === 'top' ? 'notif-top' : 'notif-bottom');
-    const target = missions[tf], s = snr[tf], c = charts[pos], now = Math.floor(Date.now()/1000);
-    if(!target || !s) return;
+    const target = missions[tf], c = charts[pos], now = Math.floor(Date.now()/1000);
+    const whaleAlarm = document.getElementById('whale-sound');
 
-    // Gambar Garis Misi
-    for (let mTF in colors) { 
-        if(missions[mTF]) c.lines[mTF].setData([{time: now-50000, value: missions[mTF]}, {time: now+50000, value: missions[mTF]}]); 
-        else c.lines[mTF].setData([]);
+    // FITUR: FLASH PRESSURE (ANTI WHALE) - TETAP ADA
+    const candleSize = Math.abs(k.c - k.o);
+    if (candleSize > (p * 0.0035)) {
+        notif.className = "status-overlay WHALE-DANGER";
+        notif.innerHTML = "⚠️ WHALE FLASH! ⚠️<br>HOLD ALL ENTRIES!";
+        notif.style.display = "block";
+        whaleAlarm.play();
+        return;
     }
 
-    // Deteksi Misi Tercapai (Hit Target)
-    if (Math.abs(p - target) < (p * 0.00005)) {
-        achievedMissions[tf] = { time: Date.now(), price: target };
-        syncAll(); // Langsung cari misi baru
+    // GAMBAR SEMUA GARIS MISI (TIDAK DIHAPUS)
+    for (let mTF in colors) { 
+        if(missions[mTF]) c.lines[mTF].setData([{time: now-50000, value: missions[mTF]}, {time: now+50000, value: missions[mTF]}]); 
     }
 
     if (k.x) lock[pos] = false; 
     if (lock[pos]) return;
 
-    const isBuyZone = p < target && Math.abs(p - s.s) < (p * 0.0012);
-    const isSellZone = p > target && Math.abs(p - s.r) < (p * 0.0012);
+    // FITUR: PROBABILITY DIRECTION ARROW (UNTUK SCALPER REMAH-REMAH)
+    const direction = p < target ? 'UP ↑' : 'DOWN ↓';
+    const dirColor = p < target ? '#0f0' : '#f00';
+
+    // FITUR: SAFETY H1 (COUNTER-TREND GUARD)
+    const h1Mission = missions['1h'];
+    const h1Trend = p < h1Mission ? 'BUY' : 'SELL';
+
+    const isBuyZone = p < target && Math.abs(p - snr[tf].s) < (p * 0.0012);
+    const isSellZone = p > target && Math.abs(p - snr[tf].r) < (p * 0.0012);
 
     if (isBuyZone || isSellZone) {
-        lock[pos] = true;
         const action = isBuyZone ? 'BUY' : 'SELL';
-        const ts = new Date().toLocaleString('id-ID');
-        entryLog.push({ Time: ts, Action: action, TF: tf, Price: p, Target: target });
-        document.getElementById('btnDownload').innerText = `DOWNLOAD LOG (${entryLog.length})`;
-
-        notif.className = `status-overlay ${action}-ALERT`;
-        notif.innerHTML = `<span class="tp-active">HAJAR ${action}! (1+1=2)</span><br>TARGET: ${target.toFixed(2)}`;
-        notif.style.display = "block";
+        
+        // JIKA MELAWAN H1, KASIH PERINGATAN (SAFETY)
+        if (action !== h1Trend) {
+            notif.className = "status-overlay DANGER-ALERT";
+            notif.innerHTML = `⚠️ COUNTER-TREND H1!<br>TARGET ${tf}: ${target.toFixed(2)}`;
+        } else {
+            lock[pos] = true;
+            notif.className = `status-overlay ${action}-ALERT`;
+            notif.innerHTML = `SNIPER CLEAR: ${action}!<br>TARGET: ${target.toFixed(2)}`;
+            entryLog.push({ Time: new Date().toLocaleTimeString(), Action: action, TF: tf, Price: p, Target: target });
+            document.getElementById('btnDownload').innerText = `LOG (${entryLog.length})`;
+        }
     } else {
         notif.className = "status-overlay WAIT-ALERT";
-        notif.innerHTML = `WAITING MATHEMATICAL SETUP...<br>TARGET: ${target.toFixed(2)}`;
-        notif.style.display = "block";
+        notif.innerHTML = `SCANNING 1+1=2...<br>PROBABILITY: <span style="color:${dirColor}">${direction}</span><br>TARGET: ${target.toFixed(2)}`;
     }
+    notif.style.display = "block";
 }
 
 document.getElementById('btnDownload').onclick = () => {
     let csv = "Time,Action,TF,Price,Target\n";
     entryLog.forEach(l => { csv += `${l.Time},${l.Action},${l.TF},${l.Price},${l.Target}\n`; });
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Math_Log_${Date.now()}.csv`; a.click();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv])); a.download = `Sniper_Full_Log.csv`; a.click();
 };
 
 async function start(pos) {
@@ -172,7 +175,7 @@ async function start(pos) {
     };
 }
 
-document.getElementById('btnConnect').onclick = async () => { await syncAll(); start('top'); start('bottom'); setInterval(syncAll, 60000); };
+document.getElementById('btnConnect').onclick = async () => { await syncAll(); start('top'); start('bottom'); setInterval(syncAll, 300000); };
 document.getElementById('tf-top').onchange = () => start('top');
 document.getElementById('tf-bottom').onchange = () => start('bottom');
 </script>

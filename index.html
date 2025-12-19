@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V40.3 - COMMANDER MODE (FULL TF UNLOCKED)</title>
+    <title>V40.4 - COMMANDER (CLICK TO COPY)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -16,11 +16,18 @@
         .chart-box { position: relative; height: 45vh; border-bottom: 1px solid #222; }
         .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; background: rgba(0,0,0,0.8); padding: 3px; border: 1px solid #444; border-radius: 4px; }
         .tf-bar select { width: 85px; font-size: 11px; padding: 2px; }
-        #side-panel { position: absolute; top: 90px; right: 5px; z-index: 50; background: rgba(0,0,0,0.9); border: 1px solid #f0f; padding: 8px; font-size: 10px; color: #0f0; pointer-events: none; border-radius: 5px; }
+        
+        /* SIDE PANEL DENGAN FITUR COPY */
+        #side-panel { position: absolute; top: 90px; right: 5px; z-index: 50; background: rgba(0,0,0,0.9); border: 2px solid #f0f; padding: 8px; font-size: 10px; border-radius: 5px; max-width: 130px; }
+        .misi-item { padding: 5px; margin-bottom: 4px; border: 1px solid #333; cursor: pointer; border-radius: 3px; transition: 0.2s; position: relative; }
+        .misi-item:hover { background: #222; border-color: #fff; }
+        .misi-item:active { transform: scale(0.95); background: #0f0; color: #000; }
+        .copy-hint { font-size: 7px; color: #aaa; display: block; margin-top: 2px; }
+
         #hajar-notif { display: none; position: fixed; top: 20%; left: 50%; transform: translateX(-50%); width: 320px; background: rgba(10, 0, 0, 0.98); padding: 20px; z-index: 9999; text-align: center; border: 4px solid #f00; border-radius: 12px; box-shadow: 0 0 40px #f00; }
         .detail-box { text-align: left; background: #200; padding: 12px; border-radius: 6px; border: 1px solid #f44; font-size: 13px; margin: 15px 0; }
         .line { display: flex; justify-content: space-between; margin-bottom: 8px; border-bottom: 1px solid #400; padding-bottom: 2px; }
-        .val { font-weight: bold; color: #0f0; }
+        .val { font-weight: bold; color: #0f0; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -30,11 +37,11 @@
 <div id="hajar-notif">
     <h1 style="color:yellow; margin:0; font-size:32px;">HAJAR!</h1>
     <div class="detail-box" id="h-content"></div>
-    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:900; width:100%; padding: 15px; border-radius: 8px; cursor: pointer; border:none;">SAYA PAHAM (CEK HARGA REAL!)</button>
+    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:900; width:100%; padding: 15px; border-radius: 8px; cursor: pointer; border:none;">TUTUP</button>
 </div>
 
 <div id="side-panel">
-    <b style="color:#f0f; border-bottom:1px solid #f0f; display:block; margin-bottom:5px;">BLUEPRINT MISI</b>
+    <b style="color:#f0f; border-bottom:1px solid #f0f; display:block; margin-bottom:8px; font-size: 11px;">CLICK TO COPY</b>
     <div id="misi-list"></div>
     <div id="timer" style="font-size:8px; color:#666; margin-top:5px;">RE-SCAN: 05:00</div>
 </div>
@@ -42,7 +49,7 @@
 <div class="chart-container" style="display: flex; flex-direction: column; height: 100vh;">
     <div id="header">
         <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option><option value="SOLUSDT">SOL/USDT</option></select>
-        <button onclick="initApp()">ACTIVATE COMMANDER V40.3</button>
+        <button onclick="initApp()">ACTIVATE COMMANDER V40.4</button>
     </div>
     
     <div id="canvas-top" class="chart-box">
@@ -68,13 +75,24 @@
 let missions = {}, charts = {}, webs = {}, rSec = 300;
 const mCols = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff' };
 
+// Fungsi Copy Otomatis
+function copyPrice(val) {
+    navigator.clipboard.writeText(val).then(() => {
+        const t = document.getElementById('timer');
+        const old = t.innerText;
+        t.innerText = "COPIED: " + val;
+        t.style.color = "#0f0";
+        setTimeout(() => { t.innerText = old; t.style.color = "#666"; }, 1500);
+    });
+}
+
 async function calculateMission(sym, tf) {
     try {
         const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`);
         const d = await r.json();
         const prev = d[d.length-2];
         const pO = +prev[1], pH = +prev[2], pL = +prev[3], pC = +prev[4];
-        return pC > pO ? pL : pH; // Syarat High Accuracy: Ambil ekor lawan sebagai magnet
+        return pC > pO ? pL : pH; // Logic High Accuracy
     } catch(e) { return null; }
 }
 
@@ -84,7 +102,17 @@ async function sync() {
     const tfs = ['1m','5m','15m','30m','1h','4h','1d'];
     for (let tf of tfs) {
         const val = await calculateMission(sym, tf);
-        if(val) { missions[tf] = val; if(mCols[tf]) list.innerHTML += `<div style="color:${mCols[tf]}">${tf.toUpperCase()}: ${val.toFixed(2)}</div>`; }
+        if(val) { 
+            missions[tf] = val; 
+            if(mCols[tf]) {
+                const item = document.createElement('div');
+                item.className = 'misi-item';
+                item.style.color = mCols[tf];
+                item.onclick = () => copyPrice(val.toFixed(2));
+                item.innerHTML = `<b>${tf.toUpperCase()}</b>: ${val.toFixed(2)} <span class="copy-hint">Tap to Copy</span>`;
+                list.appendChild(item);
+            }
+        }
     }
     rSec = 300;
 }
@@ -96,13 +124,13 @@ function check(p, k, tf) {
         if(diff < 0.002 && ((p > target && k.c < k.o) || (p < target && k.c > k.o))) {
             const n = document.getElementById('hajar-notif');
             if(n.style.display !== 'block') {
-                const side = p > target ? "SELL (SUPPLY REJECT)" : "BUY (DEMAND REJECT)";
-                const tp = missions['15m'] || missions['1h'] || "FOLLOW BLUEPRINT";
+                const side = p > target ? "SELL" : "BUY";
+                const tp = missions['15m'] || missions['1h'] || "BLUEPRINT";
                 document.getElementById('h-content').innerHTML = `
-                    <div class="line"><span>TF Sinyal:</span><span class="val">${tf.toUpperCase()}</span></div>
-                    <div class="line"><span>Aksi:</span><span class="val" style="color:#ff4444">${side}</span></div>
-                    <div class="line"><span>Entry Ideal:</span><span class="val">${p.toFixed(2)}</span></div>
-                    <div class="line"><span>Target TP:</span><span class="val" style="color:yellow">${tp}</span></div>
+                    <div class="line"><span>TF:</span><span class="val">${tf.toUpperCase()}</span></div>
+                    <div class="line"><span>AKSI:</span><span class="val" style="color:#ff4444">${side}</span></div>
+                    <div class="line"><span>ENTRY (TAP):</span><span class="val" onclick="copyPrice('${p.toFixed(2)}')">${p.toFixed(2)}</span></div>
+                    <div class="line"><span>TP (TAP):</span><span class="val" style="color:yellow" onclick="copyPrice('${tp}')">${tp}</span></div>
                 `;
                 n.style.display = 'block';
                 new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();

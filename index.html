@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V34.7 - SNIPER PREDATOR + HISTORICAL LOG</title>
+    <title>V35.0 - SNIPER MATHEMATICS (1+1=2)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -21,21 +21,20 @@
         .tp-active { animation: pulse-red 0.3s infinite; font-size: 20px; }
         .misi-info { position: absolute; bottom: 5px; right: 5px; z-index: 10; background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #444; font-size: 9px; line-height: 1.1; max-height: 120px; overflow-y: auto; }
         .tf-ctrl-box { position: absolute; top: 5px; left: 5px; z-index: 10; display: flex; gap: 5px; background: rgba(0,0,0,0.6); padding: 2px; border: 1px solid #444; }
-        /* STYLE TOMBOL LOG */
-        #btnDownload { position: absolute; bottom: 10px; left: 10px; z-index: 1000; border-color: #ffaa00; color: #ffaa00; font-size: 10px; }
+        #btnDownload { position: absolute; bottom: 10px; left: 10px; z-index: 1000; border: 1px solid #ffaa00; color: #ffaa00; font-size: 10px; padding: 5px; background: #000; }
     </style>
 </head>
 <body>
 <div class="container">
     <div id="header">
         <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
-        <button id="btnConnect">START SNIPER ENGINE V34.7</button>
+        <button id="btnConnect">START PROBABILITY ENGINE V35.0</button>
     </div>
     <div class="view-area">
         <div class="chart-container" id="box-top">
             <div id="notif-top" class="status-overlay" style="display:none"></div>
             <div class="tf-ctrl-box">
-                <select id="tf-top"><option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option><option value="30m">M30</option><option value="15m" selected>M15</option><option value="5m">M5</option><option value="1m">M1</option></select>
+                <select id="tf-top"><option value="1h">H1</option><option value="30m">M30</option><option value="15m" selected>M15</option><option value="5m">M5</option><option value="1m">M1</option></select>
             </div>
             <div id="canvas-top" style="height:100%"></div>
             <div class="misi-info" id="misi-top"></div>
@@ -43,7 +42,7 @@
         <div class="chart-container" id="box-bottom">
             <div id="notif-bottom" class="status-overlay" style="display:none"></div>
             <div class="tf-ctrl-box">
-                <select id="tf-bottom"><option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option><option value="30m">M30</option><option value="15m">M15</option><option value="5m">M5</option><option value="1m" selected>M1</option></select>
+                <select id="tf-bottom"><option value="1h">H1</option><option value="30m">M30</option><option value="15m">M15</option><option value="5m">M5</option><option value="1m" selected>M1</option></select>
             </div>
             <div id="canvas-bottom" style="height:100%"></div>
             <div class="misi-info" id="misi-bottom"></div>
@@ -51,20 +50,13 @@
         </div>
     </div>
 </div>
-<audio id="bgm" loop preload="auto"><source src="bgm.mp3" type="audio/mpeg"></audio>
 
 <script>
-let missions = {}, snr = {}, charts = {}, websocks = {}, lock = { top: false, bottom: false };
-let entryHistory = []; // Wadah history
-const colors = { '1d': '#ff8c00', '4h': '#808080', '1h': '#f0f', '30m': '#0ff', '15m': '#ff0', '5m': '#0f0', '1m': '#fff' };
-const bgm = document.getElementById('bgm');
+let missions = {}, snr = {}, charts = {}, websocks = {}, lock = { top: false, bottom: false }, entryLog = [];
+let achievedMissions = {}; // Untuk pelacakan penghapusan 1 jam
 
-function startBGM() {
-    bgm.volume = 0; bgm.muted = false;
-    bgm.play().then(() => {
-        let v = 0; const iv = setInterval(() => { v += 0.01; if (v >= 0.15) { v = 0.15; clearInterval(iv); } bgm.volume = v; }, 100);
-    }).catch(e => console.log("BGM Blocked"));
-}
+// WARNA SESUAI INSTRUKSI LU
+const colors = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff' };
 
 function createChart(id) {
     const c = LightweightCharts.createChart(document.getElementById(id), {
@@ -74,37 +66,48 @@ function createChart(id) {
     });
     const s = c.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
     const lines = {};
-    for (let tf in colors) { lines[tf] = c.addLineSeries({ color: colors[tf], lineWidth: 1, priceLineVisible: false }); }
+    for (let tf in colors) { lines[tf] = c.addLineSeries({ color: colors[tf], lineWidth: 2, priceLineVisible: false }); }
     return { c, s, lines };
 }
 
 charts.top = createChart('canvas-top');
 charts.bottom = createChart('canvas-bottom');
 
-async function syncAll(symbol) {
+async function syncAll() {
+    const sym = document.getElementById('symbol').value;
+    const nowTs = Date.now();
+    
     for (let tf in colors) {
-        try {
-            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=250`);
-            const d = await r.json();
-            const last = parseFloat(d[d.length-1][4]);
-            let deals = [], hi = [], lo = [];
-            d.forEach(k => { hi.push(+k[2]); lo.push(+k[3]); deals.push(+k[1]); });
-            snr[tf] = { r: Math.max(...hi), s: Math.min(...lo) };
-            let untouched = deals.filter(p => Math.abs(p - last) > (last * 0.00012)).sort((a,b) => Math.abs(a-last) - Math.abs(b-last));
-            missions[tf] = untouched[0] || last;
-        } catch(e) {}
+        // Hapus misi yang sudah tercapai > 1 jam
+        if (achievedMissions[tf] && (nowTs - achievedMissions[tf].time > 3600000)) {
+            delete missions[tf];
+            delete achievedMissions[tf];
+        }
+
+        if (!missions[tf]) {
+            try {
+                const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=250`);
+                const d = await r.json();
+                const last = parseFloat(d[d.length-1][4]);
+                let deals = [], hi = [], lo = [];
+                d.forEach(k => { hi.push(+k[2]); lo.push(+k[3]); deals.push(+k[1]); });
+                snr[tf] = { r: Math.max(...hi), s: Math.min(...lo) };
+                
+                // Mission Price = Harga yang belum tercapai tapi 'seharusnya' tercapai
+                let target = deals.filter(p => Math.abs(p - last) > (last * 0.00015)).sort((a,b) => Math.abs(a-last) - Math.abs(b-last))[0];
+                missions[tf] = target || last;
+            } catch(e) {}
+        }
     }
-    ['top', 'bottom'].forEach(p => {
-        const el = document.getElementById(`misi-${p}`);
-        el.innerHTML = "<b>MISSIONS:</b>";
-        for (let tf in colors) { if(missions[tf]) el.innerHTML += `<div style="color:${colors[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`; }
-    });
+    renderMissionList();
 }
 
-function saveLog(action, price, target, tf) {
-    const time = new Date().toLocaleString('id-ID');
-    entryHistory.push({ Time: time, Action: action, TF: tf, Entry: price, Target_TP: target });
-    document.getElementById('btnDownload').innerText = `DOWNLOAD ENTRY LOG (${entryHistory.length})`;
+function renderMissionList() {
+    ['top', 'bottom'].forEach(p => {
+        const el = document.getElementById(`misi-${p}`);
+        el.innerHTML = "<b>MISSION PRICES:</b>";
+        for (let tf in colors) { if(missions[tf]) el.innerHTML += `<div style="color:${colors[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`; }
+    });
 }
 
 function updateUI(pos, p, tf, k) {
@@ -112,49 +115,46 @@ function updateUI(pos, p, tf, k) {
     const target = missions[tf], s = snr[tf], c = charts[pos], now = Math.floor(Date.now()/1000);
     if(!target || !s) return;
 
-    for (let mTF in colors) { if(missions[mTF]) c.lines[mTF].setData([{time: now-100000, value: missions[mTF]}, {time: now+100000, value: missions[mTF]}]); }
+    // Gambar Garis Misi
+    for (let mTF in colors) { 
+        if(missions[mTF]) c.lines[mTF].setData([{time: now-50000, value: missions[mTF]}, {time: now+50000, value: missions[mTF]}]); 
+        else c.lines[mTF].setData([]);
+    }
+
+    // Deteksi Misi Tercapai (Hit Target)
+    if (Math.abs(p - target) < (p * 0.00005)) {
+        achievedMissions[tf] = { time: Date.now(), price: target };
+        syncAll(); // Langsung cari misi baru
+    }
 
     if (k.x) lock[pos] = false; 
     if (lock[pos]) return;
 
-    const gap = p * 0.0012; 
-    const isBuyZone = p < target && Math.abs(p - s.s) < gap;
-    const isSellZone = p > target && Math.abs(p - s.r) < gap;
+    const isBuyZone = p < target && Math.abs(p - s.s) < (p * 0.0012);
+    const isSellZone = p > target && Math.abs(p - s.r) < (p * 0.0012);
 
     if (isBuyZone || isSellZone) {
         lock[pos] = true;
-        c.lines[tf].applyOptions({ color: '#ff0000', lineWidth: 5, lineStyle: 2 });
         const action = isBuyZone ? 'BUY' : 'SELL';
-        
-        // CATAT LOG SAAT PERINTAH MUNCUL
-        saveLog(action, p, target, tf);
+        const ts = new Date().toLocaleString('id-ID');
+        entryLog.push({ Time: ts, Action: action, TF: tf, Price: p, Target: target });
+        document.getElementById('btnDownload').innerText = `DOWNLOAD LOG (${entryLog.length})`;
 
         notif.className = `status-overlay ${action}-ALERT`;
-        notif.innerHTML = `<span class="tp-active">GOLDEN MOMENTUM! ${action}!</span><br>MISI: ${target.toFixed(2)}`;
+        notif.innerHTML = `<span class="tp-active">HAJAR ${action}! (1+1=2)</span><br>TARGET: ${target.toFixed(2)}`;
         notif.style.display = "block";
     } else {
-        c.lines[tf].applyOptions({ color: colors[tf], lineWidth: 1, lineStyle: 0 });
         notif.className = "status-overlay WAIT-ALERT";
-        notif.innerHTML = `SNIPER MODE: RELOADING...<br>TARGET: ${target.toFixed(2)}`;
+        notif.innerHTML = `WAITING MATHEMATICAL SETUP...<br>TARGET: ${target.toFixed(2)}`;
         notif.style.display = "block";
     }
-    if (Math.abs(p - target) < (p * 0.0001)) syncAll(document.getElementById('symbol').value);
 }
 
-// FUNGSI DOWNLOAD
 document.getElementById('btnDownload').onclick = () => {
-    if (entryHistory.length === 0) return alert("Belum ada tembakan Sniper!");
-    let csv = "Time,Action,TimeFrame,EntryPrice,TargetTP\n";
-    entryHistory.forEach(row => { csv += `${row.Time},${row.Action},${row.TF},${row.Entry},${row.Target_TP}\n`; });
+    let csv = "Time,Action,TF,Price,Target\n";
+    entryLog.forEach(l => { csv += `${l.Time},${l.Action},${l.TF},${l.Price},${l.Target}\n`; });
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.setAttribute('hidden', '');
-    a.setAttribute('href', url);
-    a.setAttribute('download', `Sniper_Log_${Date.now()}.csv`);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `Math_Log_${Date.now()}.csv`; a.click();
 };
 
 async function start(pos) {
@@ -172,7 +172,7 @@ async function start(pos) {
     };
 }
 
-document.getElementById('btnConnect').onclick = async () => { startBGM(); await syncAll(document.getElementById('symbol').value); start('top'); start('bottom'); };
+document.getElementById('btnConnect').onclick = async () => { await syncAll(); start('top'); start('bottom'); setInterval(syncAll, 60000); };
 document.getElementById('tf-top').onchange = () => start('top');
 document.getElementById('tf-bottom').onchange = () => start('bottom');
 </script>

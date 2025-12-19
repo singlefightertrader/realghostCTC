@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V34.5 - ULTIMATE PREDATOR (ALL TF + PRECISION)</title>
+    <title>V34.6 - SNIPER PREDATOR (ONE SHOOT ONE KILL)</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { box-sizing: border-box; }
@@ -13,29 +13,21 @@
         select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; cursor: pointer; text-transform: uppercase; font-size: 11px; }
         .view-area { flex: 1; display: flex; flex-direction: column; position: relative; }
         .chart-container { flex: 1; position: relative; border-bottom: 1px solid #222; }
-        
-        /* NOTIFIKASI SYSTEM */
         .status-overlay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 100; padding: 12px 25px; border-radius: 4px; font-weight: 900; font-size: 14px; text-align: center; min-width: 360px; border: 4px solid #fff; pointer-events: none; }
         .BUY-ALERT { background: #00ff00; color: #000; box-shadow: 0 0 30px #00ff00; }
         .SELL-ALERT { background: #ff0000; color: #fff; box-shadow: 0 0 30px #ff0000; }
-        .DANGER-ALERT { background: #ffaa00; color: #000; border-color: #f00; box-shadow: 0 0 40px #f00; animation: blink 0.5s infinite; }
         .WAIT-ALERT { background: #333; color: #ff0; border-color: #ff0; }
-        
-        /* ANIMASI KEDIP TP */
-        @keyframes pulse-red { 0% { opacity: 1; } 50% { opacity: 0.2; } 100% { opacity: 1; } }
-        .tp-active { animation: pulse-red 0.4s infinite; font-size: 18px; }
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
+        @keyframes pulse-red { 0% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.05); } 100% { opacity: 1; transform: scale(1); } }
+        .tp-active { animation: pulse-red 0.3s infinite; font-size: 20px; text-shadow: 0 0 10px #fff; }
         .misi-info { position: absolute; bottom: 5px; right: 5px; z-index: 10; background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #444; font-size: 9px; line-height: 1.1; max-height: 150px; overflow-y: auto; }
         .tf-ctrl-box { position: absolute; top: 5px; left: 5px; z-index: 10; display: flex; gap: 5px; background: rgba(0,0,0,0.6); padding: 2px; border: 1px solid #444; }
-        .ghost-status { position: absolute; top: 50px; right: 10px; font-size: 9px; color: #0f0; text-align: right; background: rgba(0,0,0,0.7); padding: 5px; border: 1px solid #222; z-index: 10; }
     </style>
 </head>
 <body>
 <div class="container">
     <div id="header">
         <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
-        <button id="btnConnect">START ALL-TF ENGINE V34.5</button>
+        <button id="btnConnect">ACTIVATE SNIPER ENGINE V34.6</button>
     </div>
     <div class="view-area">
         <div class="chart-container" id="box-top">
@@ -52,7 +44,6 @@
         </div>
         <div class="chart-container" id="box-bottom">
             <div id="notif-bottom" class="status-overlay" style="display:none"></div>
-            <div class="ghost-status" id="ghost-log">GHOST: STANDBY</div>
             <div class="tf-ctrl-box">
                 <select id="tf-bottom" class="tf-selector">
                     <option value="1d">D1</option><option value="4h">H4</option><option value="1h">H1</option>
@@ -65,12 +56,10 @@
         </div>
     </div>
 </div>
-
 <audio id="bgm" loop preload="auto"><source src="bgm.mp3" type="audio/mpeg"></audio>
 
 <script>
-let missions = {}, snr = {}, charts = {}, websocks = {};
-let lock = { top: false, bottom: false };
+let missions = {}, snr = {}, charts = {}, websocks = {}, lock = { top: false, bottom: false };
 const colors = { '1d': '#ff8c00', '4h': '#808080', '1h': '#f0f', '30m': '#0ff', '15m': '#ff0', '5m': '#0f0', '1m': '#fff' };
 const bgm = document.getElementById('bgm');
 
@@ -102,7 +91,7 @@ async function syncAll(symbol) {
             const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${tf}&limit=250`);
             const d = await r.json();
             const last = parseFloat(d[d.length-1][4]);
-            let hi = [], lo = [], deals = [];
+            let deals = [], hi = [], lo = [];
             d.forEach(k => { hi.push(+k[2]); lo.push(+k[3]); deals.push(+k[1]); });
             snr[tf] = { r: Math.max(...hi), s: Math.min(...lo) };
             let untouched = deals.filter(p => Math.abs(p - last) > (last * 0.00012)).sort((a,b) => Math.abs(a-last) - Math.abs(b-last));
@@ -111,7 +100,7 @@ async function syncAll(symbol) {
     }
     ['top', 'bottom'].forEach(p => {
         const el = document.getElementById(`misi-${p}`);
-        el.innerHTML = "<b>MISSIONS:</b>";
+        el.innerHTML = "<b>SNIPER TARGETS:</b>";
         for (let tf in colors) { if(missions[tf]) el.innerHTML += `<div style="color:${colors[tf]}">${tf.toUpperCase()}: ${missions[tf].toFixed(2)}</div>`; }
     });
 }
@@ -123,37 +112,26 @@ function updateUI(pos, p, tf, k) {
 
     for (let mTF in colors) { if(missions[mTF]) c.lines[mTF].setData([{time: now-100000, value: missions[mTF]}, {time: now+100000, value: missions[mTF]}]); }
 
-    const isBreakout = p > s.r + (p * 0.001) || p < s.s - (p * 0.001);
-    if (isBreakout) {
-        notif.className = "status-overlay DANGER-ALERT";
-        notif.innerHTML = `BREAKOUT ${tf.toUpperCase()}!<br>AWAS MC! JANGAN ENTRY!`;
-        notif.style.display = "block"; return;
-    }
-
     if (k.x) lock[pos] = false; 
     if (lock[pos]) return;
 
-    // AKURASI MOMENTUM (0.08% GAP)
-    const isBuyZone = p < target && Math.abs(p - s.s) < (p * 0.0008);
-    const isSellZone = p > target && Math.abs(p - s.r) < (p * 0.0008);
+    // SNIPER LOGIC: Deteksi Golden Momentum (Jarak 0.12% untuk agresivitas Sniper)
+    const gap = p * 0.0012; 
+    const isBuyZone = p < target && Math.abs(p - s.s) < gap;
+    const isSellZone = p > target && Math.abs(p - s.r) < gap;
 
     if (isBuyZone || isSellZone) {
         lock[pos] = true;
-        c.lines[tf].applyOptions({ color: '#ff0000', lineWidth: 4, lineStyle: 2 }); // Garis TP Kedip Merah
+        c.lines[tf].applyOptions({ color: '#ff0000', lineWidth: 5, lineStyle: 2 }); // Kill Zone Line
 
-        setTimeout(() => {
-            const signature = Math.floor(Math.random() * 3);
-            let trigger = (signature === 0) || (signature === 1 && (isBuyZone ? p < +k.o : p > +k.o)) || (signature === 2 && (isBuyZone ? p > +k.l : p < +k.h));
-            if (trigger) {
-                const action = isBuyZone ? 'BUY' : 'SELL';
-                notif.className = `status-overlay ${action}-ALERT`;
-                notif.innerHTML = `<span class="tp-active">HAQQUL YAKIN! HAJAR ${action}!</span><br>TARGET TP: ${target.toFixed(2)}`;
-            } else { lock[pos] = false; }
-        }, Math.floor(Math.random() * 850));
+        const action = isBuyZone ? 'BUY' : 'SELL';
+        notif.className = `status-overlay ${action}-ALERT`;
+        notif.innerHTML = `<span class="tp-active">GOLDEN MOMENTUM! SHOOT ${action}!</span><br>MISI: ${target.toFixed(2)}`;
+        notif.style.display = "block";
     } else {
         c.lines[tf].applyOptions({ color: colors[tf], lineWidth: 1, lineStyle: 0 });
         notif.className = "status-overlay WAIT-ALERT";
-        notif.innerHTML = `SABAR.. TUNGGU ZONA AKURAT.<br>TARGET: ${target.toFixed(2)}`;
+        notif.innerHTML = `SNIPER MODE: RELOADING...<br>TARGET: ${target.toFixed(2)}`;
         notif.style.display = "block";
     }
     if (Math.abs(p - target) < (p * 0.0001)) syncAll(document.getElementById('symbol').value);

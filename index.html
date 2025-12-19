@@ -3,58 +3,48 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-    <title>V40.8 - FIXED COLORS & FULL TF</title>
+    <title>V41.8 - MISSION COPY FIXED</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #000; color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
         #header { padding: 5px; background: #111; display: grid; grid-template-columns: 1fr 1fr 100px; gap: 5px; border-bottom: 2px solid #333; }
-        select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; font-size: 12px; cursor: pointer; width: 100%; }
-        #btn-mission { border-color: #f0f; color: #f0f; }
-        #side-panel { display: none; position: absolute; top: 90px; right: 10px; z-index: 500; background: rgba(0,0,0,0.95); border: 2px solid #f0f; padding: 10px; border-radius: 8px; width: 160px; }
-        .misi-item { padding: 8px; margin-bottom: 5px; border: 1px solid #333; cursor: pointer; border-radius: 4px; font-size: 11px; }
-        #warning-banner { background: #600; color: #fff; padding: 5px; text-align: center; font-weight: 900; font-size: 11px; display: none; z-index: 2000; animation: blink 1s infinite; }
-        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        select, button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 8px; font-weight: 900; font-size: 11px; cursor: pointer; width: 100%; }
         .chart-box { position: relative; height: 45vh; border-bottom: 1px solid #222; }
-        .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; background: rgba(0,0,0,0.8); padding: 3px; border: 1px solid #444; border-radius: 4px; }
-        .tf-bar select { width: 90px; font-size: 11px; }
-        
-        /* NOTIF DENGAN WARNA YANG BENER */
-        #hajar-notif { display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%); width: 320px; background: rgba(10, 0, 0, 0.98); padding: 20px; z-index: 9999; text-align: center; border-radius: 12px; }
-        .detail-box { text-align: left; padding: 12px; margin: 15px 0; border: 1px solid #fff; font-size: 13px; border-radius: 6px; }
+        .tf-bar { position: absolute; top: 5px; left: 5px; z-index: 100; background: rgba(0,0,0,0.8); padding: 2px; border: 1px solid #444; }
+        #hajar-notif { display: none; position: fixed; top: 15%; left: 50%; transform: translateX(-50%); width: 320px; background: rgba(10, 0, 0, 0.98); padding: 20px; z-index: 9999; text-align: center; border-radius: 15px; }
+        #side-panel { display: none; position: absolute; top: 90px; right: 10px; z-index: 500; background: #000; border: 2px solid #f0f; padding: 10px; border-radius: 8px; width: 180px; box-shadow: 0 0 15px #f0f; }
+        .misi-btn { display: block; width: 100%; padding: 8px; margin-top: 5px; background: #111; border: 1px solid #333; color: #fff; cursor: pointer; text-align: left; font-size: 11px; border-radius: 4px; }
+        .misi-btn:active { background: #0f0; color: #000; }
     </style>
 </head>
 <body>
 
-<div id="warning-banner">⚠️ DANGER: NO REVERSAL - WATCH WICK! ⚠️</div>
-
 <div id="side-panel">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-        <b style="color:#f0f; font-size:12px;">BLUEPRINT</b>
+        <b style="color:#f0f; font-size:12px;">CLICK TO COPY</b>
         <button onclick="togglePanel()" style="width:25px; height:25px; padding:0; border-color:#f44; color:#f44;">X</button>
     </div>
     <div id="misi-list"></div>
 </div>
 
 <div id="hajar-notif">
-    <h1 id="h-title" style="margin:0; font-size:32px; text-shadow: 0 0 10px #000;">HAJAR!</h1>
-    <div id="h-content" class="detail-box"></div>
-    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:900; width:100%; padding: 12px; border:none; border-radius:5px; cursor:pointer;">SAYA PAHAM</button>
+    <h1 id="h-title" style="margin:0; font-size:32px; font-weight:900;"></h1>
+    <div id="h-content" style="text-align:left; background:rgba(255,255,255,0.1); padding:15px; margin:15px 0; border-radius:8px; border:1px solid #fff; font-size:13px;"></div>
+    <button onclick="this.parentElement.style.display='none'" style="background:#fff; color:#000; font-weight:900; padding:15px; border:none; border-radius:8px; width:100%;">CLOSE</button>
 </div>
 
 <div class="chart-container" style="display: flex; flex-direction: column; height: 100vh;">
     <div id="header">
         <select id="symbol"><option value="BTCUSDT">BTC/USDT</option><option value="ETHUSDT">ETH/USDT</option></select>
-        <button onclick="initApp()">ACTIVATE V40.8</button>
-        <button id="btn-mission" onclick="togglePanel()">MISSION</button>
+        <button onclick="initApp()">START FIXED V41.8</button>
+        <button onclick="togglePanel()" style="border-color:#f0f; color:#f0f;">MISSION</button>
     </div>
     
     <div id="canvas-top" class="chart-box">
         <div class="tf-bar">
             <select id="sel-top" onchange="load('top')">
-                <option value="1m">M1</option><option value="5m">M5</option><option value="15m">M15</option>
-                <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d" selected>D1</option>
+                <option value="1m">M1</option><option value="5m">M5</option><option value="15m">M15</option><option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d" selected>D1</option>
             </select>
         </div>
     </div>
@@ -62,38 +52,30 @@
     <div id="canvas-bottom" class="chart-box">
         <div class="tf-bar">
             <select id="sel-bottom" onchange="load('bottom')">
-                <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option>
-                <option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option>
+                <option value="1m" selected>M1</option><option value="5m">M5</option><option value="15m">M15</option><option value="30m">M30</option><option value="1h">H1</option><option value="4h">H4</option><option value="1d">D1</option>
             </select>
         </div>
     </div>
 </div>
 
 <script>
-let missions = {}, charts = {}, webs = {}, rSec = 300;
+let missions = {}, charts = {}, webs = { top: null, bottom: null };
 const mCols = { '1h': '#bf00ff', '30m': '#0000ff', '15m': '#ffff00', '5m': '#00ff00', '1m': '#ffffff' };
 
-function togglePanel() {
-    const p = document.getElementById('side-panel');
-    p.style.display = (p.style.display === 'none' || p.style.display === '') ? 'block' : 'none';
-}
+function togglePanel() { const p = document.getElementById('side-panel'); p.style.display = (p.style.display === 'none') ? 'block' : 'none'; }
 
-function copyPrice(val) {
+// FUNGSI COPY PRICE YANG TADI KETINGGALAN
+function copyToClipboard(val, tf) {
     navigator.clipboard.writeText(val).then(() => {
-        const btn = document.getElementById('btn-mission');
-        const old = btn.innerText; btn.innerText = "COPIED!";
-        setTimeout(() => { btn.innerText = old; }, 1000);
+        const btn = document.getElementById(`btn-${tf}`);
+        const originalText = btn.innerText;
+        btn.innerText = "COPIED!";
+        btn.style.borderColor = "#0f0";
+        setTimeout(() => { 
+            btn.innerText = originalText; 
+            btn.style.borderColor = "#333";
+        }, 1000);
     });
-}
-
-async function calculateMission(sym, tf) {
-    try {
-        const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`);
-        const d = await r.json();
-        const prev = d[d.length-2];
-        const pO = +prev[1], pH = +prev[2], pL = +prev[3], pC = +prev[4];
-        return pC > pO ? pL : pH; // High Accuracy
-    } catch(e) { return null; }
 }
 
 async function sync() {
@@ -101,74 +83,81 @@ async function sync() {
     const list = document.getElementById('misi-list'); list.innerHTML = '';
     const tfs = ['1m','5m','15m','30m','1h','4h','1d'];
     for (let tf of tfs) {
-        const val = await calculateMission(sym, tf);
-        if(val) { 
-            missions[tf] = val; 
-            if(mCols[tf]) list.innerHTML += `<div class="misi-item" style="color:${mCols[tf]}" onclick="copyPrice('${val.toFixed(2)}')">${tf.toUpperCase()}: ${val.toFixed(2)}</div>`;
-        }
+        try {
+            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=5`);
+            const d = await r.json();
+            const prev = d[d.length-2];
+            const val = parseFloat(prev[4]) > parseFloat(prev[1]) ? parseFloat(prev[3]) : parseFloat(prev[2]);
+            missions[tf] = val;
+            const color = mCols[tf] || '#fff';
+            list.innerHTML += `<button id="btn-${tf}" class="misi-btn" style="color:${color}" onclick="copyToClipboard('${val.toFixed(2)}', '${tf}')">${tf.toUpperCase()}: ${val.toFixed(2)}</button>`;
+        } catch(e) {}
     }
 }
 
-function check(p, k, tf) {
+function check(p, k, tf, pos) {
     const target = missions[tf];
-    if(target && tf.includes('m')) {
-        const diff = Math.abs(p - target) / p;
-        const hasWick = (p > target && (parseFloat(k.h)-p) > (p-parseFloat(k.l))) || (p < target && (p-parseFloat(k.l)) > (parseFloat(k.h)-p));
-        if(diff < 0.002) {
-            if(hasWick) {
-                const n = document.getElementById('hajar-notif');
-                const title = document.getElementById('h-title');
-                if(n.style.display !== 'block') {
-                    const isSell = p > target;
-                    // FIX WARNA: Sell = Merah, Buy = Hijau
-                    n.style.border = isSell ? "4px solid #f00" : "4px solid #0f0";
-                    n.style.boxShadow = isSell ? "0 0 40px #f00" : "0 0 40px #0f0";
-                    title.style.color = isSell ? "#f44" : "#0f0";
-                    
-                    document.getElementById('h-content').innerHTML = `
-                        <b style="color:#fff">TF:</b> ${tf.toUpperCase()}<br>
-                        <b style="color:#fff">ACTION:</b> <span style="color:${isSell ? '#f44':'#0f0'}; font-weight:bold;">${isSell ? 'SELL' : 'BUY'}</span><br>
-                        <b style="color:#fff">PRICE:</b> ${p.toFixed(2)}
-                    `;
-                    n.style.display = 'block';
-                    new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
-                }
-            } else { document.getElementById('warning-banner').style.display = 'block'; }
-        } else { document.getElementById('warning-banner').style.display = 'none'; }
+    if(!target) return;
+    const diff = Math.abs(p - target);
+    const range = parseFloat(k.h) - parseFloat(k.l);
+    
+    if(diff < (range * 3)) {
+        const isSell = p > target;
+        charts[pos].entryLine.applyOptions({ price: target, color: isSell ? '#f00' : '#0f0', visible: true, lineStyle: 2 });
+        if(diff < (range * 0.15)) triggerHajar(p, isSell, tf);
+    } else {
+        charts[pos].entryLine.applyOptions({ visible: false });
     }
+}
+
+function triggerHajar(p, isSell, tf) {
+    const n = document.getElementById('hajar-notif');
+    if(n.style.display === 'block') return;
+    n.style.display = 'block';
+    n.style.border = isSell ? "5px solid #f00" : "5px solid #0f0";
+    n.style.boxShadow = isSell ? "0 0 30px #f00" : "0 0 30px #0f0";
+    document.getElementById('h-title').innerText = isSell ? "HAJAR SELL!" : "HAJAR BUY!";
+    document.getElementById('h-title').style.color = isSell ? "#f44" : "#0f0";
+    document.getElementById('h-content').innerHTML = `TF: ${tf.toUpperCase()}<br>PRICE: ${p.toFixed(2)}<br><b style="color:yellow">IDEAL ENTRY REACHED</b>`;
+    new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
 }
 
 async function load(pos) {
+    if(webs[pos]) { webs[pos].close(); webs[pos] = null; }
     const sym = document.getElementById('symbol').value;
     const tf = document.getElementById(pos === 'top' ? 'sel-top' : 'sel-bottom').value;
-    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=120`);
+    const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${tf}&limit=100`);
     const d = await r.json();
     charts[pos].s.setData(d.map(k => ({ time: k[0]/1000, open: +k[1], high: +k[2], low: +k[3], close: +k[4] })));
-    if(webs[pos]) webs[pos].close();
+    
     webs[pos] = new WebSocket(`wss://stream.binance.com:9443/ws/${sym.toLowerCase()}@kline_${tf}`);
     webs[pos].onmessage = e => {
-        const k = JSON.parse(e.data).k; const p = parseFloat(k.c);
+        const k = JSON.parse(e.data).k;
+        const p = parseFloat(k.c);
         charts[pos].s.update({ time: k.t/1000, open: +k.o, high: +k.h, low: +k.l, close: +k.c });
-        check(p, k, tf);
-        const now = Math.floor(Date.now()/1000);
-        for(let m in mCols) if(missions[m]) charts[pos].lines[m].setData([{time: now-100000, value: missions[m]}, {time: now+100000, value: missions[m]}]);
+        check(p, k, tf, pos);
     };
 }
 
 function initApp() {
-    charts.top = charts.top || createC('canvas-top');
-    charts.bottom = charts.bottom || createC('canvas-bottom');
+    if(!charts.top) {
+        charts.top = createC('canvas-top');
+        charts.bottom = createC('canvas-bottom');
+    }
     sync().then(() => { load('top'); load('bottom'); });
 }
 
 function createC(id) {
-    const c = LightweightCharts.createChart(document.getElementById(id), { layout: { background: { color: '#000' }, textColor: '#ccc' }, grid: { vertLines: { color: '#111' }, horzLines: { color: '#111' } } });
+    const c = LightweightCharts.createChart(document.getElementById(id), { 
+        layout: { background: { color: '#000' }, textColor: '#ccc' },
+        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+        handleScroll: true, handleScale: true
+    });
     const s = c.addCandlestickSeries({ upColor: '#22c55e', downColor: '#ef4444', borderVisible: false });
-    const lines = {};
-    for (let tf in mCols) lines[tf] = c.addLineSeries({ color: mCols[tf], lineWidth: 2, priceLineVisible: false });
-    return { c, s, lines };
+    const entryLine = s.createPriceLine({ price: 0, color: 'transparent', lineWidth: 2, lineStyle: 2, axisLabelVisible: true });
+    return { c, s, entryLine };
 }
-setInterval(() => { sync(); }, 300000);
+setInterval(sync, 300000);
 </script>
 </body>
 </html>

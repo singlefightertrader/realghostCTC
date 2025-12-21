@@ -2,117 +2,111 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>BTCUSDT · BACKEND SIGNAL MODE (GALAK)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BTCUSDT · LEVEL DEWA ENGINE</title>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
 
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace;overflow:hidden}
-
-#header{
+body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace}
+#header{padding:8px;text-align:center;font-weight:900;border-bottom:2px solid #0f0}
+#chart{height:60vh}
+#status{
+  padding:10px;
+  text-align:center;
+  font-weight:900;
+  font-size:15px;
+}
+#mission{
   padding:8px;
   text-align:center;
   font-weight:900;
-  background:#000;
-  border-bottom:2px solid #00ff66;
-  color:#00ff66;
-}
-
-#status{
-  position:fixed;
-  top:42px;
-  left:0;
-  right:0;
-  padding:14px;
-  text-align:center;
-  font-weight:900;
-  font-size:16px;
-  display:none;
-  z-index:9999;
-}
-
-.chart{
-  height:45vh;
-  border-bottom:1px solid #222;
-}
-
-.footer{
-  padding:6px;
-  font-size:10px;
-  color:#777;
-  text-align:center;
-  background:#000;
+  color:#00ff99;
 }
 </style>
 </head>
 
 <body>
 
-<div id="header">BTCUSDT · BACKEND SIGNAL MODE (GALAK)</div>
-<div id="status"></div>
-
-<div class="chart">
-  <iframe
-    src="https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=1&theme=dark&style=1"
-    style="width:100%;height:100%;border:0;"
-    allowfullscreen>
-  </iframe>
-</div>
-
-<div class="chart">
-  <iframe
-    src="https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=5&theme=dark&style=1"
-    style="width:100%;height:100%;border:0;"
-    allowfullscreen>
-  </iframe>
-</div>
-
-<div class="footer">
-  Backend memutuskan KONDISI · Entry tetap keputusan trader
-</div>
+<div id="header">BTCUSDT · STORY + MISSION (LEVEL DEWA)</div>
+<div id="chart"></div>
+<div id="status">CONNECTING...</div>
+<div id="mission"></div>
 
 <script>
-// ================== GANTI URL WORKER ==================
+// ========== CONFIG ==========
 const WS_URL = "wss://btusdmt5.sapammeded.workers.dev";
-// ======================================================
+// ============================
 
-const box = document.getElementById("status");
-let ws, retry = 0;
+// === CHART SETUP ===
+const chart = LightweightCharts.createChart(
+  document.getElementById('chart'),
+  {
+    layout:{background:{color:'#000'},textColor:'#0f0'},
+    grid:{vertLines:{color:'#222'},horzLines:{color:'#222'}},
+    timeScale:{timeVisible:true,secondsVisible:false}
+  }
+);
 
-function show(msg, color){
-  box.innerText = msg;
-  box.style.background = color;
-  box.style.color = "#000";
-  box.style.display = "block";
+const candleSeries = chart.addCandlestickSeries({
+  upColor:'#00ff66',
+  downColor:'#ff4444',
+  borderUpColor:'#00ff66',
+  borderDownColor:'#ff4444',
+  wickUpColor:'#00ff66',
+  wickDownColor:'#ff4444'
+});
+
+// === MISSION LINES ===
+let missionLine = null;
+function drawMission(price){
+  if(missionLine) candleSeries.removePriceLine(missionLine);
+  missionLine = candleSeries.createPriceLine({
+    price: price,
+    color: '#00ff99',
+    lineWidth: 2,
+    lineStyle: 2,
+    axisLabelVisible: true,
+    title: 'MISSION'
+  });
 }
 
-function connect(){
-  ws = new WebSocket(WS_URL);
+// === STATUS ===
+const statusBox = document.getElementById("status");
+const missionBox = document.getElementById("mission");
 
-  ws.onopen = () => {
-    retry = 0;
-    show("⏳ BACKEND CONNECTED – MENUNGGU KEPUTUSAN...", "#777");
-  };
+// === WS CONNECT ===
+const ws = new WebSocket(WS_URL);
 
-  ws.onmessage = e => {
-    try{
-      const d = JSON.parse(e.data);
-      if(d.status === "WAIT")     show(d.message, "#ffea00");
-      if(d.status === "READY")    show(d.message, "#00ff99");
-      if(d.status === "NO_TRADE") show(d.message, "#ff4444");
-    }catch(err){}
-  };
+ws.onopen = () => {
+  statusBox.innerText = "BACKEND CONNECTED – STORY ENGINE ACTIVE";
+};
 
-  ws.onerror = () => ws.close();
+ws.onmessage = e => {
+  const d = JSON.parse(e.data);
 
-  ws.onclose = () => {
-    retry++;
-    show("❌ BACKEND DISCONNECTED – RECONNECTING...", "#ff4444");
-    setTimeout(connect, Math.min(5000, retry * 1000));
-  };
-}
+  // candle update
+  if(d.candle){
+    candleSeries.update({
+      time: d.candle.time,
+      open: d.candle.open,
+      high: d.candle.high,
+      low: d.candle.low,
+      close: d.candle.close
+    });
+  }
 
-connect();
+  // status
+  if(d.status){
+    statusBox.innerText = d.message || d.status;
+  }
+
+  // mission
+  if(d.mission_price){
+    drawMission(d.mission_price);
+    missionBox.innerText = "🎯 MISI HARGA: " + d.mission_price;
+  }
+};
 </script>
 
 </body>

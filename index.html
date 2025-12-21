@@ -3,25 +3,52 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-<title>BTCUSDT · BACKEND SIGNAL MODE</title>
+<title>BTCUSDT · BACKEND SIGNAL MODE (GALAK)</title>
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace}
-#top{padding:8px;text-align:center;font-weight:900;background:#111;border-bottom:2px solid #0f0}
-#status{
-  position:fixed;top:44px;left:0;right:0;
-  padding:14px;text-align:center;font-weight:900;font-size:16px;
-  display:none;z-index:9999
+body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace;overflow:hidden}
+
+#header{
+  padding:8px;
+  text-align:center;
+  font-weight:900;
+  background:#000;
+  border-bottom:2px solid #00ff66;
+  color:#00ff66;
 }
-.chart{height:45vh;border-bottom:1px solid #222}
-.footer{padding:6px;font-size:10px;color:#777;text-align:center;background:#111}
+
+#status{
+  position:fixed;
+  top:42px;
+  left:0;
+  right:0;
+  padding:14px;
+  text-align:center;
+  font-weight:900;
+  font-size:16px;
+  display:none;
+  z-index:9999;
+}
+
+.chart{
+  height:45vh;
+  border-bottom:1px solid #222;
+}
+
+.footer{
+  padding:6px;
+  font-size:10px;
+  color:#777;
+  text-align:center;
+  background:#000;
+}
 </style>
 </head>
 
 <body>
 
-<div id="top">BTCUSDT · BACKEND SIGNAL MODE (GALAK)</div>
+<div id="header">BTCUSDT · BACKEND SIGNAL MODE (GALAK)</div>
 <div id="status"></div>
 
 <div class="chart">
@@ -45,9 +72,9 @@ body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace}
 </div>
 
 <script>
-// ========= GANTI DENGAN URL WORKER LO =========
+// ================== GANTI URL WORKER ==================
 const WS_URL = "wss://btusdmt5.sapammeded.workers.dev";
-// ==============================================
+// ======================================================
 
 const box = document.getElementById("status");
 let ws, retry = 0;
@@ -70,9 +97,9 @@ function connect(){
   ws.onmessage = e => {
     try{
       const d = JSON.parse(e.data);
-      if(d.status === "WAIT")      show(d.message, "#ffea00");
-      if(d.status === "READY")     show(d.message, "#00ff99");
-      if(d.status === "NO_TRADE")  show(d.message, "#ff4444");
+      if(d.status === "WAIT")     show(d.message, "#ffea00");
+      if(d.status === "READY")    show(d.message, "#00ff99");
+      if(d.status === "NO_TRADE") show(d.message, "#ff4444");
     }catch(err){}
   };
 

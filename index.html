@@ -2,26 +2,30 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>MT5 SNIPER FINAL</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>SNIPER ENGINE – MT5 REAL (FINAL)</title>
+
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+
 <style>
-body{margin:0;background:#000;color:#0f0;font-family:monospace}
-#top{display:flex;gap:5px;padding:6px;background:#111;border-bottom:2px solid #0f0}
-.box{flex:1;border:1px solid #0f0;padding:6px;text-align:center;font-weight:bold}
-#status{padding:8px;text-align:center;background:#222}
-#wrap{height:calc(100vh - 90px);display:grid;grid-template-rows:1fr 1fr}
+*{box-sizing:border-box}
+body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace;overflow:hidden}
+#top{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;background:#111;border-bottom:2px solid #0f0}
+.box{border:1px solid #0f0;padding:6px;text-align:center;font-weight:900;font-size:12px}
+#status{padding:8px;text-align:center;background:#222;font-weight:900}
+#wrap{height:calc(100vh - 100px);display:grid;grid-template-rows:1fr 1fr}
 .chart{border-top:1px solid #222}
 </style>
 </head>
+
 <body>
 
 <div id="top">
   <div class="box">BTCUSD · MT5 REAL</div>
-  <div class="box">GALAK + SAFETY</div>
+  <div class="box">MODE: GALAK + SAFETY</div>
 </div>
 
-<div id="status">WAITING WS...</div>
+<div id="status">⏳ WAITING WS…</div>
 
 <div id="wrap">
   <div id="c1" class="chart"></div>
@@ -29,38 +33,65 @@ body{margin:0;background:#000;color:#0f0;font-family:monospace}
 </div>
 
 <script>
-// ===== GANTI URL INI SAJA =====
-const WS_URL = "wss://mt5ws.yourname.workers.dev";
+// ================== KONFIG ==================
+// GANTI DENGAN WORKER LO (WAJIB)
+const WS_URL = "wss://NAMA-WORKER.workers.dev";
 
-const status = document.getElementById("status");
+// ===========================================
+const statusBox = document.getElementById("status");
 
-// CHART
-const c1 = LightweightCharts.createChart(c1,{layout:{background:{color:"#000"},textColor:"#0f0"}});
-const s1 = c1.addCandlestickSeries();
-const c5 = LightweightCharts.createChart(c5,{layout:{background:{color:"#000"},textColor:"#0f0"}});
-const s5 = c5.addCandlestickSeries();
+// ================== CHART ==================
+const chart1 = LightweightCharts.createChart(
+  document.getElementById("c1"),
+  { layout:{background:{color:"#000"},textColor:"#0f0"}, timeScale:{timeVisible:true,secondsVisible:true} }
+);
+const s1 = chart1.addCandlestickSeries();
 
-// ANDROID FIX
-setTimeout(()=>{c1.timeScale().fitContent();c5.timeScale().fitContent();},500);
+const chart5 = LightweightCharts.createChart(
+  document.getElementById("c5"),
+  { layout:{background:{color:"#000"},textColor:"#0f0"}, timeScale:{timeVisible:true,secondsVisible:true} }
+);
+const s5 = chart5.addCandlestickSeries();
 
-// SEED
-const t=Math.floor(Date.now()/1000);
-s1.setData([{time:t-60,open:1,high:1,low:1,close:1}]);
-s5.setData([{time:t-60,open:1,high:1,low:1,close:1}]);
+// ===== ANDROID RESIZE FIX =====
+setTimeout(()=>{ chart1.timeScale().fitContent(); chart5.timeScale().fitContent(); },500);
+setTimeout(()=>{ chart1.timeScale().fitContent(); chart5.timeScale().fitContent(); },1500);
 
-// WS
+// ===== SEED (ANTI BLANK) =====
+const seedTime = Math.floor(Date.now()/1000);
+s1.setData([{time:seedTime-60,open:1,high:1,low:1,close:1}]);
+s5.setData([{time:seedTime-60,open:1,high:1,low:1,close:1}]);
+
+// ================== WEBSOCKET ==================
 const ws = new WebSocket(WS_URL);
 
-ws.onopen = ()=>status.innerText="MT5 FEED CONNECTED";
-ws.onclose = ()=>status.innerText="WS CLOSED";
-ws.onerror = ()=>status.innerText="WS ERROR";
+ws.onopen = () => {
+  statusBox.innerText = "✅ WS CONNECTED – WAITING DATA…";
+};
 
-ws.onmessage = e=>{
+ws.onerror = () => {
+  statusBox.innerText = "❌ WS ERROR";
+};
+
+ws.onclose = () => {
+  statusBox.innerText = "❌ WS CLOSED";
+};
+
+ws.onmessage = e => {
   const d = JSON.parse(e.data);
-  const now=Math.floor(Date.now()/1000);
-  if(d.m1) s1.update({time:now,open:d.m1.o,high:d.m1.h,low:d.m1.l,close:d.m1.c});
-  if(d.m5) s5.update({time:now,open:d.m5.o,high:d.m5.h,low:d.m5.l,close:d.m5.c});
+  const t = Math.floor(Date.now()/1000);
+
+  if (d.m1) {
+    s1.update({ time:t, open:d.m1.o, high:d.m1.h, low:d.m1.l, close:d.m1.c });
+  }
+
+  if (d.m5) {
+    s5.update({ time:t, open:d.m5.o, high:d.m5.h, low:d.m5.l, close:d.m5.c });
+  }
+
+  statusBox.innerText = "🔥 DATA LIVE – MT5 FEED OK";
 };
 </script>
+
 </body>
 </html>

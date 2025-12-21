@@ -2,95 +2,90 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<title>SNIPER ENGINE – MT5 REAL (FINAL)</title>
-
-<script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>BTCUSDT · BACKEND SIGNAL MODE</title>
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace;overflow:hidden}
-#top{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:6px;background:#111;border-bottom:2px solid #0f0}
-.box{border:1px solid #0f0;padding:6px;text-align:center;font-weight:900;font-size:12px}
-#status{padding:8px;text-align:center;background:#222;font-weight:900}
-#wrap{height:calc(100vh - 100px);display:grid;grid-template-rows:1fr 1fr}
-.chart{border-top:1px solid #222}
+body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace}
+#top{padding:8px;text-align:center;font-weight:900;background:#111;border-bottom:2px solid #0f0}
+#status{
+  position:fixed;top:44px;left:0;right:0;
+  padding:14px;text-align:center;font-weight:900;font-size:16px;
+  display:none;z-index:9999
+}
+.chart{height:45vh;border-bottom:1px solid #222}
+.footer{padding:6px;font-size:10px;color:#777;text-align:center;background:#111}
 </style>
 </head>
 
 <body>
 
-<div id="top">
-  <div class="box">BTCUSD · MT5 REAL</div>
-  <div class="box">MODE: GALAK + SAFETY</div>
+<div id="top">BTCUSDT · BACKEND SIGNAL MODE (GALAK)</div>
+<div id="status"></div>
+
+<div class="chart">
+  <iframe
+    src="https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=1&theme=dark&style=1"
+    style="width:100%;height:100%;border:0;"
+    allowfullscreen>
+  </iframe>
 </div>
 
-<div id="status">⏳ WAITING WS…</div>
+<div class="chart">
+  <iframe
+    src="https://s.tradingview.com/widgetembed/?symbol=BINANCE:BTCUSDT&interval=5&theme=dark&style=1"
+    style="width:100%;height:100%;border:0;"
+    allowfullscreen>
+  </iframe>
+</div>
 
-<div id="wrap">
-  <div id="c1" class="chart"></div>
-  <div id="c5" class="chart"></div>
+<div class="footer">
+  Backend memutuskan KONDISI · Entry tetap keputusan trader
 </div>
 
 <script>
-// ================== KONFIG ==================
-// GANTI DENGAN WORKER LO (WAJIB)
-const WS_URL = "wss://NAMA-WORKER.workers.dev";
+// ========= GANTI DENGAN URL WORKER LO =========
+const WS_URL = "wss://NAMA-WORKER.username.workers.dev";
+// ==============================================
 
-// ===========================================
-const statusBox = document.getElementById("status");
+const box = document.getElementById("status");
+let ws, retry = 0;
 
-// ================== CHART ==================
-const chart1 = LightweightCharts.createChart(
-  document.getElementById("c1"),
-  { layout:{background:{color:"#000"},textColor:"#0f0"}, timeScale:{timeVisible:true,secondsVisible:true} }
-);
-const s1 = chart1.addCandlestickSeries();
+function show(msg, color){
+  box.innerText = msg;
+  box.style.background = color;
+  box.style.color = "#000";
+  box.style.display = "block";
+}
 
-const chart5 = LightweightCharts.createChart(
-  document.getElementById("c5"),
-  { layout:{background:{color:"#000"},textColor:"#0f0"}, timeScale:{timeVisible:true,secondsVisible:true} }
-);
-const s5 = chart5.addCandlestickSeries();
+function connect(){
+  ws = new WebSocket(WS_URL);
 
-// ===== ANDROID RESIZE FIX =====
-setTimeout(()=>{ chart1.timeScale().fitContent(); chart5.timeScale().fitContent(); },500);
-setTimeout(()=>{ chart1.timeScale().fitContent(); chart5.timeScale().fitContent(); },1500);
+  ws.onopen = () => {
+    retry = 0;
+    show("⏳ BACKEND CONNECTED – MENUNGGU KEPUTUSAN...", "#777");
+  };
 
-// ===== SEED (ANTI BLANK) =====
-const seedTime = Math.floor(Date.now()/1000);
-s1.setData([{time:seedTime-60,open:1,high:1,low:1,close:1}]);
-s5.setData([{time:seedTime-60,open:1,high:1,low:1,close:1}]);
+  ws.onmessage = e => {
+    try{
+      const d = JSON.parse(e.data);
+      if(d.status === "WAIT")      show(d.message, "#ffea00");
+      if(d.status === "READY")     show(d.message, "#00ff99");
+      if(d.status === "NO_TRADE")  show(d.message, "#ff4444");
+    }catch(err){}
+  };
 
-// ================== WEBSOCKET ==================
-const ws = new WebSocket(WS_URL);
+  ws.onerror = () => ws.close();
 
-ws.onopen = () => {
-  statusBox.innerText = "✅ WS CONNECTED – WAITING DATA…";
-};
+  ws.onclose = () => {
+    retry++;
+    show("❌ BACKEND DISCONNECTED – RECONNECTING...", "#ff4444");
+    setTimeout(connect, Math.min(5000, retry * 1000));
+  };
+}
 
-ws.onerror = () => {
-  statusBox.innerText = "❌ WS ERROR";
-};
-
-ws.onclose = () => {
-  statusBox.innerText = "❌ WS CLOSED";
-};
-
-ws.onmessage = e => {
-  const d = JSON.parse(e.data);
-  const t = Math.floor(Date.now()/1000);
-
-  if (d.m1) {
-    s1.update({ time:t, open:d.m1.o, high:d.m1.h, low:d.m1.l, close:d.m1.c });
-  }
-
-  if (d.m5) {
-    s5.update({ time:t, open:d.m5.o, high:d.m5.h, low:d.m5.l, close:d.m5.c });
-  }
-
-  statusBox.innerText = "🔥 DATA LIVE – MT5 FEED OK";
-};
+connect();
 </script>
 
 </body>

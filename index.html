@@ -1,130 +1,66 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
-<title>SNIPER ENGINE — MT5 REAL (ANDROID SAFE)</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MT5 SNIPER FINAL</title>
 <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
-
 <style>
-*{box-sizing:border-box}
-body{margin:0;background:#000;color:#0f0;font-family:Courier New,monospace;overflow:hidden}
-#top{position:fixed;top:0;left:0;right:0;z-index:10;background:#111;border-bottom:2px solid #0f0;padding:6px;display:grid;grid-template-columns:1fr 1fr}
-.badge{border:1px solid #0f0;padding:6px;font-size:11px;text-align:center;font-weight:900}
-#banner{position:fixed;top:46px;left:0;right:0;display:block;padding:10px;text-align:center;font-weight:900;background:#222}
-#charts{position:absolute;top:90px;left:0;right:0;bottom:0;display:grid;grid-template-rows:1fr 1fr}
-.chart{border-bottom:1px solid #222}
+body{margin:0;background:#000;color:#0f0;font-family:monospace}
+#top{display:flex;gap:5px;padding:6px;background:#111;border-bottom:2px solid #0f0}
+.box{flex:1;border:1px solid #0f0;padding:6px;text-align:center;font-weight:bold}
+#status{padding:8px;text-align:center;background:#222}
+#wrap{height:calc(100vh - 90px);display:grid;grid-template-rows:1fr 1fr}
+.chart{border-top:1px solid #222}
 </style>
 </head>
-
 <body>
 
 <div id="top">
-  <div class="badge">BTCUSD • MT5 REAL</div>
-  <div class="badge">MODE: GALAK + SAFETY</div>
+  <div class="box">BTCUSD · MT5 REAL</div>
+  <div class="box">GALAK + SAFETY</div>
 </div>
 
-<div id="banner">⏳ WAITING MT5 FEED…</div>
+<div id="status">WAITING WS...</div>
 
-<div id="charts">
+<div id="wrap">
   <div id="c1" class="chart"></div>
   <div id="c5" class="chart"></div>
 </div>
 
 <script>
-// ================= CONFIG =================
-const WS_URL = "wss://YOUR-WORKER.workers.dev"; // GANTI INI
-const SPEED_TH = 0.0006;
-const DELTA_TH = 0.03;
-const COOLDOWN = 3500;
-const QUIET_RATIO = 0.45;
+// ===== GANTI URL INI SAJA =====
+const WS_URL = "wss://mt5ws.yourname.workers.dev";
 
-let lastAlert=0;
-let lastPrice={ '1m':null,'5m':null };
-let avgRange={ '1m':0,'5m':0 };
+const status = document.getElementById("status");
 
-// ================= CHART INIT =================
-const c1 = LightweightCharts.createChart(document.getElementById('c1'), {
-  layout:{background:{color:'#000'},textColor:'#0f0'},
-  timeScale:{timeVisible:true,secondsVisible:true}
-});
+// CHART
+const c1 = LightweightCharts.createChart(c1,{layout:{background:{color:"#000"},textColor:"#0f0"}});
 const s1 = c1.addCandlestickSeries();
-
-const c5 = LightweightCharts.createChart(document.getElementById('c5'), {
-  layout:{background:{color:'#000'},textColor:'#0f0'},
-  timeScale:{timeVisible:true,secondsVisible:true}
-});
+const c5 = LightweightCharts.createChart(c5,{layout:{background:{color:"#000"},textColor:"#0f0"}});
 const s5 = c5.addCandlestickSeries();
 
-// ===== ANDROID FIX =====
-function forceResize(){
-  c1.timeScale().fitContent();
-  c5.timeScale().fitContent();
-}
-setTimeout(forceResize,300);
-setTimeout(forceResize,1200);
+// ANDROID FIX
+setTimeout(()=>{c1.timeScale().fitContent();c5.timeScale().fitContent();},500);
 
-// ===== SEED DATA (ANTI BLANK) =====
-function seed(series){
-  const t=Math.floor(Date.now()/1000);
-  series.setData([{time:t-60,open:1,high:1,low:1,close:1}]);
-}
-seed(s1); seed(s5);
+// SEED
+const t=Math.floor(Date.now()/1000);
+s1.setData([{time:t-60,open:1,high:1,low:1,close:1}]);
+s5.setData([{time:t-60,open:1,high:1,low:1,close:1}]);
 
-// ================= WS =================
-const banner=document.getElementById("banner");
+// WS
 const ws = new WebSocket(WS_URL);
 
-ws.onopen=()=>banner.innerText="✅ MT5 FEED CONNECTED";
-ws.onerror=()=>banner.innerText="❌ WS ERROR";
-ws.onclose=()=>banner.innerText="❌ WS CLOSED";
+ws.onopen = ()=>status.innerText="MT5 FEED CONNECTED";
+ws.onclose = ()=>status.innerText="WS CLOSED";
+ws.onerror = ()=>status.innerText="WS ERROR";
 
-ws.onmessage=e=>{
-  const d=JSON.parse(e.data);
-  feed("1m",d.m1,s1);
-  feed("5m",d.m5,s5);
+ws.onmessage = e=>{
+  const d = JSON.parse(e.data);
+  const now=Math.floor(Date.now()/1000);
+  if(d.m1) s1.update({time:now,open:d.m1.o,high:d.m1.h,low:d.m1.l,close:d.m1.c});
+  if(d.m5) s5.update({time:now,open:d.m5.o,high:d.m5.h,low:d.m5.l,close:d.m5.c});
 };
-
-// ================= ENGINE =================
-function feed(tf,c,series){
-  if(!c) return;
-  const t=Math.floor(Date.now()/1000);
-  series.update({time:t,open:c.o,high:c.h,low:c.l,close:c.c});
-
-  const body=Math.abs(c.c-c.o);
-  const range=c.h-c.l;
-  avgRange[tf]=avgRange[tf]*0.9+range*0.1;
-
-  if(avgRange[tf]>0 && range<avgRange[tf]*QUIET_RATIO) return;
-
-  const delta=((c.c-c.o)/c.o)*100;
-  const now=Date.now();
-  if(now-lastAlert<COOLDOWN) return;
-
-  if(lastPrice[tf]!==null){
-    const speed=Math.abs(c.c-lastPrice[tf]);
-    if(speed>c.o*SPEED_TH){
-      banner.innerText=`🔥 ${tf} SPEED BURST`;
-      lastAlert=now;
-    }
-  }
-  lastPrice[tf]=c.c;
-
-  if(Math.abs(delta)>DELTA_TH){
-    banner.innerText=`⚡ ${tf} PRESSURE ${delta>0?'BULL':'BEAR'}`;
-    lastAlert=now;
-  }
-
-  if((c.h-Math.max(c.o,c.c))>body*1.8){
-    banner.innerText=`⚠️ ${tf} LIQUIDITY ABOVE TAKEN`;
-    lastAlert=now;
-  }
-  if((Math.min(c.o,c.c)-c.l)>body*1.8){
-    banner.innerText=`⚠️ ${tf} LIQUIDITY BELOW TAKEN`;
-    lastAlert=now;
-  }
-}
 </script>
 </body>
 </html>
